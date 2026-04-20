@@ -40,18 +40,18 @@ const Layout = ({ children }) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 safe-area-bottom">
-        <div className="max-w-md mx-auto flex justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 safe-area-bottom">
+        <div className="max-w-md mx-auto flex justify-between">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center p-2 ${
+              className={`flex flex-col items-center justify-center min-w-[70px] p-1 ${
                 location.pathname === item.path ? 'text-indigo-600' : 'text-gray-500'
               }`}
             >
-              <item.icon size={24} />
-              <span className="text-xs mt-1">{item.label}</span>
+              <item.icon size={22} />
+              <span className="text-[10px] font-medium mt-1">{item.label}</span>
             </Link>
           ))}
         </div>
