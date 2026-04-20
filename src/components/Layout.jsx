@@ -1,9 +1,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, List, Calendar } from 'lucide-react';
+import { Home, PlusCircle, List, Calendar, LogOut } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const Layout = ({ children }) => {
   const location = useLocation();
+
+  const handleLogout = async () => {
+    if (window.confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+      await supabase.auth.signOut();
+    }
+  };
 
   const navItems = [
     { path: '/', icon: Home, label: 'Ana Sayfa' },
@@ -19,6 +26,12 @@ const Layout = ({ children }) => {
             <Calendar size={24} />
             Taç Organizasyon
           </h1>
+          <button 
+            onClick={handleLogout}
+            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <LogOut size={20} />
+          </button>
         </div>
       </header>
 
