@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard, Printer, FileText, Check } from 'lucide-react';
+import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard, Printer, FileText, Check, StickyNote } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 
 const YeniKayit = () => {
@@ -91,10 +91,17 @@ const YeniKayit = () => {
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     documentTitle: `Organizasyon_${formData.damat_ad_soyad || 'Kayit'}`,
+    onAfterPrint: () => console.log('Yazdırma işlemi tamamlandı'),
   });
 
+  const handlePDF = () => {
+    // Tarayıcıların çoğunda yazdır diyince PDF olarak kaydet seçeneği çıkar.
+    // Kullanıcıya rehberlik etmek için aynı fonksiyonu kullanabiliriz.
+    handlePrint();
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
 
     try {
@@ -129,7 +136,8 @@ const YeniKayit = () => {
             paket_icerigi: formData.paket_icerigi,
             kina_paketi: formData.kina_paketi,
             ek_istekler: formData.ek_istekler,
-            kina_ek_istekler: formData.kina_ek_istekler
+            kina_ek_istekler: formData.kina_ek_istekler,
+            _is_complex: true // Mark as complex data
           })
         }])
         .select()
@@ -138,8 +146,8 @@ const YeniKayit = () => {
       if (orgError) throw orgError;
 
       // 3. Create finance record
-      const total = parseFloat(formData.toplam_ucret) || 0;
-      const kaparo = parseFloat(formData.kapora) || 0;
+      const total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
+      const kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
       const odeme_durumu = kaparo >= total ? 'Ödendi' : (kaparo > 0 ? 'Kısmi' : 'Ödenmedi');
 
       const { error: financeError } = await supabase
@@ -217,10 +225,16 @@ const YeniKayit = () => {
         <h2 className="text-xl font-bold text-gray-800">Yeni Organizasyon Kaydı</h2>
         <div className="flex gap-2">
           <button
+            onClick={handlePDF}
+            className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-100 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 shadow-sm"
+          >
+            <FileText size={18} /> PDF İndir
+          </button>
+          <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 shadow-sm"
           >
-            <Printer size={18} /> Çıktı / PDF
+            <Printer size={18} /> Çıktı Al
           </button>
           <button
             onClick={handleSubmit}

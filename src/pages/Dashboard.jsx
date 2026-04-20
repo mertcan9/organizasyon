@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { format, isAfter } from 'date-fns';
+import { format, isAfter, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { ArrowRight, CheckCircle, AlertCircle, Edit2, Trash2, MessageCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -32,7 +32,7 @@ const Dashboard = () => {
       if (error) throw error;
 
       const now = new Date();
-      const upcoming = data.filter(org => isAfter(new Date(org.tarih_saat), now));
+      const upcoming = data.filter(org => isAfter(parseISO(org.tarih_saat), now));
       const unpaid = data.filter(org => org.finans?.[0]?.odeme_durumu !== 'Ödendi');
 
       setStats({
@@ -69,7 +69,7 @@ const Dashboard = () => {
   const sendWhatsApp = (telefon, musteriAdi, tarih, toplam, kaparo) => {
     const kalan = (parseFloat(toplam) || 0) - (parseFloat(kaparo) || 0);
     const temizNo = telefon.replace(/\D/g, '');
-    const formatliTarih = format(new Date(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
+    const formatliTarih = format(parseISO(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
     
     const mesaj = `Merhaba ${musteriAdi}, ${formatliTarih} tarihindeki organizasyonunuz onaylanmıştır. Kalan ödemeniz: ${kalan} TL'dir. İyi günler dileriz.`;
     const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
@@ -114,10 +114,10 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-indigo-600">
-                    {format(new Date(org.tarih_saat), 'dd MMM', { locale: tr })}
+                    {format(parseISO(org.tarih_saat), 'dd MMM', { locale: tr })}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {format(new Date(org.tarih_saat), 'HH:mm')}
+                    {format(parseISO(org.tarih_saat), 'HH:mm')}
                   </p>
                 </div>
               </div>

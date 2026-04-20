@@ -12,10 +12,11 @@ import {
   addMonths, 
   subMonths,
   isAfter,
-  isBefore
+  isBefore,
+  parseISO
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic, Edit2, Trash2 } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic, Edit2, Trash2, StickyNote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const OrganizasyonListe = () => {
@@ -50,10 +51,21 @@ const OrganizasyonListe = () => {
     }
   };
 
+  const getNotes = (ek_notlar) => {
+    if (!ek_notlar) return '';
+    try {
+      if (ek_notlar.startsWith('{')) {
+        const data = JSON.parse(ek_notlar);
+        return data.ek_istekler || '';
+      }
+    } catch (e) {}
+    return ek_notlar;
+  };
+
   const sendWhatsApp = (telefon, musteriAdi, tarih, toplam, kaparo) => {
     const kalan = (parseFloat(toplam) || 0) - (parseFloat(kaparo) || 0);
     const temizNo = telefon.replace(/\D/g, '');
-    const formatliTarih = format(new Date(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
+    const formatliTarih = format(parseISO(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
     
     const mesaj = `Merhaba ${musteriAdi}, ${formatliTarih} tarihindeki organizasyonunuz onaylanmıştır. Kalan ödemeniz: ${kalan} TL'dir. İyi günler dileriz.`;
     const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
@@ -89,7 +101,7 @@ const OrganizasyonListe = () => {
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
   const getOrgsForDay = (day) => {
-    return orgs.filter(org => isSameDay(new Date(org.tarih_saat), day));
+    return orgs.filter(org => isSameDay(parseISO(org.tarih_saat), day));
   };
 
   const filteredOrgs = orgs.filter(org => {
@@ -178,7 +190,7 @@ const OrganizasyonListe = () => {
       <div className="space-y-4">
         <h3 className="font-bold text-gray-800 px-1">Seçili Ayın Kayıtları</h3>
         {filteredOrgs
-          .filter(org => isSameMonth(new Date(org.tarih_saat), currentDate))
+          .filter(org => isSameMonth(parseISO(org.tarih_saat), currentDate))
           .map((org) => (
           <div key={org.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-start mb-3">
@@ -188,10 +200,10 @@ const OrganizasyonListe = () => {
               </div>
               <div className="text-right bg-indigo-50 p-2 rounded-xl min-w-[70px]">
                 <p className="text-xs font-bold text-indigo-700">
-                  {format(new Date(org.tarih_saat), 'dd MMM', { locale: tr })}
+                  {format(parseISO(org.tarih_saat), 'dd MMM', { locale: tr })}
                 </p>
                 <p className="text-[10px] text-indigo-400 font-bold">
-                  {format(new Date(org.tarih_saat), 'HH:mm')}
+                  {format(parseISO(org.tarih_saat), 'HH:mm')}
                 </p>
               </div>
             </div>
@@ -203,6 +215,12 @@ const OrganizasyonListe = () => {
               <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Phone size={14} /> {org.musteriler?.telefon}
               </div>
+              {getNotes(org.ek_notlar) && (
+                <div className="flex items-start gap-2 text-gray-500 text-xs bg-gray-50 p-2 rounded-lg">
+                  <StickyNote size={14} className="mt-0.5" />
+                  <span>{getNotes(org.ek_notlar)}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-50">
