@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { format } from 'date-fns';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths,
+  isAfter,
+  isBefore
+} from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { MessageCircle, Phone, Calendar, MapPin, Search, Filter } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic } from 'lucide-react';
 
 const OrganizasyonListe = () => {
   const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('Hepsi'); // Hepsi, Yaklaşan, Geçmiş
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     fetchOrgs();
@@ -46,51 +59,117 @@ const OrganizasyonListe = () => {
     window.open(url, '_blank');
   };
 
+  // Calendar Logic
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+
+  const getOrgsForDay = (day) => {
+    return orgs.filter(org => isSameDay(new Date(org.tarih_saat), day));
+  };
+
   const filteredOrgs = orgs.filter(org => {
     const matchesSearch = org.musteriler?.ad_soyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          org.tur.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const now = new Date();
-    const orgDate = new Date(org.tarih_saat);
-    
-    if (filter === 'Yaklaşan') return matchesSearch && orgDate >= now;
-    if (filter === 'Geçmiş') return matchesSearch && orgDate < now;
     return matchesSearch;
   });
 
   if (loading) return <div className="text-center py-10">Yükleniyor...</div>;
 
   return (
-    <div className="space-y-4 pb-20">
-      <div className="flex flex-col gap-3">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Müşteri veya tür ara..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border-none rounded-xl p-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500"
-          />
+    <div className="space-y-6 pb-20">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Rezervasyon ara"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-white border border-gray-200 rounded-xl p-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      {/* Calendar View */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Calendar Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-50">
+          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 bg-slate-800 text-white">
+            <ChevronLeft size={20} />
+          </button>
+          <h2 className="text-lg font-bold text-gray-800 capitalize">
+            {format(currentDate, 'MMMM yyyy', { locale: tr })}
+          </h2>
+          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 bg-slate-800 text-white">
+            <ChevronRight size={20} />
+          </button>
         </div>
-        
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['Hepsi', 'Yaklaşan', 'Geçmiş'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-                filter === f ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 shadow-sm'
-              }`}
-            >
-              {f}
-            </button>
+
+        {/* Week Days */}
+        <div className="grid grid-cols-7 text-center bg-white border-b border-gray-50">
+          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+            <div key={day} className="py-2 text-[10px] font-bold text-blue-500 uppercase tracking-wider">
+              {day}
+            </div>
           ))}
+        </div>
+
+        {/* Calendar Days */}
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day, idx) => {
+            const dayOrgs = getOrgsForDay(day);
+            const hasOrgs = dayOrgs.length > 0;
+            const isCurrentMonth = isSameMonth(day, monthStart);
+            
+            return (
+              <div 
+                key={day.toString()} 
+                className={`
+                  min-h-[50px] border-b border-r border-gray-50 p-1 flex flex-col items-center justify-start relative
+                  ${!isCurrentMonth ? 'bg-gray-50' : 'bg-white'}
+                  ${idx % 7 === 6 ? 'border-r-0' : ''}
+                `}
+              >
+                <span className={`
+                  text-xs font-medium mt-1
+                  ${!isCurrentMonth ? 'text-gray-300' : 'text-blue-600'}
+                  ${hasOrgs ? 'text-red-500 font-bold' : ''}
+                `}>
+                  {hasOrgs && <span className="text-red-500 mr-0.5">*</span>}
+                  {format(day, 'd')}
+                </span>
+                
+                {/* Visual indicator for multiple orgs if needed */}
+                {hasOrgs && dayOrgs.length > 1 && (
+                  <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full"></div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
+      {/* Voice Search Hint */}
+      <div className="flex flex-col items-center justify-center space-y-2 py-4">
+        <div className="p-4 bg-blue-50 rounded-full text-blue-600 shadow-sm active:scale-95 transition-transform cursor-pointer">
+          <Mic size={32} />
+        </div>
+        <p className="text-xs text-gray-400 font-medium">
+          (11 Ekim 2026 yada Aralık 2026 gibi...)
+        </p>
+      </div>
+
+      {/* List View Below Calendar */}
       <div className="space-y-4">
-        {filteredOrgs.map((org) => (
+        <h3 className="font-bold text-gray-800 px-1">Seçili Ayın Kayıtları</h3>
+        {filteredOrgs
+          .filter(org => isSameMonth(new Date(org.tarih_saat), currentDate))
+          .map((org) => (
           <div key={org.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-start mb-3">
               <div>
