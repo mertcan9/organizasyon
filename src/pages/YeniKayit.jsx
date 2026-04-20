@@ -210,8 +210,23 @@ const YeniKayit = () => {
       if (orgError) throw orgError;
 
       // 3. Create finance record
-      const total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
-      const kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
+      const isStandart = formData.sozlesme_turu === 'standart';
+      const isKinaOnly = formData.sozlesme_turu === 'kina';
+      
+      let total = 0;
+      let kaparo = 0;
+      
+      if (isStandart) {
+        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
+        kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
+      } else if (isKinaOnly) {
+        total = parseFloat(formData.kina_toplam_ucret) || 0;
+        kaparo = parseFloat(formData.kina_kapora) || 0;
+      } else {
+        total = parseFloat(formData.toplam_ucret) || 0;
+        kaparo = parseFloat(formData.kapora) || 0;
+      }
+
       const odeme_durumu = kaparo >= total ? 'Ödendi' : (kaparo > 0 ? 'Kısmi' : 'Ödenmedi');
 
       const { error: financeError } = await supabase

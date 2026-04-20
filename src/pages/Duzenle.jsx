@@ -274,8 +274,23 @@ const Duzenle = () => {
 
       if (orgError) throw orgError;
 
-      const total = (parseFloat(isKinaOnly ? formData.kina_toplam_ucret : formData.toplam_ucret) || 0);
-      const kaparo = (parseFloat(isKinaOnly ? formData.kina_kapora : formData.kapora) || 0);
+      const isStandart = formData.sozlesme_turu === 'standart';
+      const isKinaOnly = formData.sozlesme_turu === 'kina';
+      
+      let total = 0;
+      let kaparo = 0;
+      
+      if (isStandart) {
+        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
+        kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
+      } else if (isKinaOnly) {
+        total = parseFloat(formData.kina_toplam_ucret) || 0;
+        kaparo = parseFloat(formData.kina_kapora) || 0;
+      } else {
+        total = parseFloat(formData.toplam_ucret) || 0;
+        kaparo = parseFloat(formData.kapora) || 0;
+      }
+
       const odeme_durumu = kaparo >= total ? 'Ödendi' : (kaparo > 0 ? 'Kısmi' : 'Ödenmedi');
 
       const { error: financeError } = await supabase
@@ -303,11 +318,21 @@ const Duzenle = () => {
     const { name, value } = e.target;
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
+      
+      // Organizasyon kalan hesaplama
       if (name === 'toplam_ucret' || name === 'kapora') {
         const t = parseFloat(newData.toplam_ucret) || 0;
         const k = parseFloat(newData.kapora) || 0;
         newData.kalan = (t - k).toString();
       }
+      
+      // Kına kalan hesaplama
+      if (name === 'kina_toplam_ucret' || name === 'kina_kapora') {
+        const t = parseFloat(newData.kina_toplam_ucret) || 0;
+        const k = parseFloat(newData.kina_kapora) || 0;
+        newData.kina_kalan = (t - k).toString();
+      }
+      
       return newData;
     });
   };
