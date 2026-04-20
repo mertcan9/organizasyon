@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard, Printer, FileText, Check, StickyNote } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const YeniKayit = () => {
   const navigate = useNavigate();
@@ -89,16 +91,49 @@ const YeniKayit = () => {
     }
   }, [location.search]);
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Organizasyon_${formData.damat_ad_soyad || 'Kayit'}`,
-    onAfterPrint: () => console.log('Yazdırma işlemi tamamlandı'),
-  });
+  const handlePDF = async () => {
+    setLoading(true);
+    const element = printRef.current;
+    
+    // Görünmez alanı geçici olarak görünür yap (ama ekran dışında)
+    const originalStyle = element.parentElement.style.display;
+    element.parentElement.style.display = 'block';
+    element.parentElement.style.position = 'absolute';
+    element.parentElement.style.left = '-9999px';
+    element.parentElement.style.top = '0';
 
-  const handlePDF = () => {
-    // Tarayıcıların çoğunda yazdır diyince PDF olarak kaydet seçeneği çıkar.
-    // Kullanıcıya rehberlik etmek için aynı fonksiyonu kullanabiliriz.
-    handlePrint();
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2, // Daha yüksek kalite için
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Sözleşme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
+    } catch (error) {
+      console.error('PDF oluşturma hatası:', error);
+      alert('PDF oluşturulurken bir hata oluştu.');
+    } finally {
+      // Stilleri geri yükle
+      element.parentElement.style.display = originalStyle;
+      element.parentElement.style.position = '';
+      element.parentElement.style.left = '';
+      element.parentElement.style.top = '';
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -127,19 +162,19 @@ const YeniKayit = () => {
           tarih_saat: `${formData.org_tarih}T${formData.org_saat || '00:00'}`,
           mekan_adi: formData.org_yer,
           ek_notlar: JSON.stringify({
-            gelin_ad_soyad: formData.gelin_ad_soyad,
-            gelin_tel: formData.gelin_tel,
-            yakin_ad_soyad: formData.yakin_ad_soyad,
-            yakin_tel: formData.yakin_tel,
-            kina_tarih: formData.kina_tarih,
-            kina_yer: formData.kina_yer,
-            kina_saat: formData.kina_saat,
-            paket_icerigi: formData.paket_icerigi,
-            kina_paketi: formData.kina_paketi,
-            ek_istekler: formData.ek_notlar,
-            kina_ek_istekler: formData.kina_ek_istekler,
-            _is_complex: true // Mark as complex data
-          })
+              gelin_ad_soyad: formData.gelin_ad_soyad,
+              gelin_tel: formData.gelin_tel,
+              yakin_ad_soyad: formData.yakin_ad_soyad,
+              yakin_tel: formData.yakin_tel,
+              kina_tarih: formData.kina_tarih,
+              kina_yer: formData.kina_yer,
+              kina_saat: formData.kina_saat,
+              paket_icerigi: formData.paket_icerigi,
+              kina_paketi: formData.kina_paketi,
+              ek_istekler: formData.ek_notlar, // Bu alan metin olarak kaydediliyor
+              kina_ek_istekler: formData.kina_ek_istekler,
+              _is_complex: true
+            })
         }])
         .select()
         .single();
@@ -406,13 +441,23 @@ const YeniKayit = () => {
           <style>{`
             @media print {
               @page { size: A4; margin: 0; }
-              body { margin: 0; padding: 0; }
-              .print-container { width: 210mm; min-height: 297mm; padding: 20mm; margin: 0 auto; background: white !important; }
+              body { margin: 0; padding: 0; background: #f3f4f6; }
+              .print-wrapper { background: #f3f4f6; padding: 20mm 0; display: flex; justify-content: center; }
+              .print-container { 
+                width: 210mm; 
+                min-height: 297mm; 
+                padding: 15mm 20mm; 
+                margin: 0 auto; 
+                background: white !important; 
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                box-sizing: border-box;
+              }
               * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
             }
           `}</style>
           
-          <div className="print-container">
+          <div className="print-wrapper">
+            <div className="print-container">
             {/* Logo ve Başlık */}
             <div className="text-center mb-10">
               <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
@@ -476,7 +521,7 @@ const YeniKayit = () => {
                 <div className="mt-6">
                   <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
                   <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
-                    {formData.ek_istekler}
+                    {formData.ek_notlar}
                   </div>
                 </div>
                 <div className="mt-8 space-y-2 text-[12px]">

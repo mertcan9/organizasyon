@@ -112,6 +112,18 @@ const OrganizasyonListe = () => {
 
   if (loading) return <div className="text-center py-10">Yükleniyor...</div>;
 
+  const handleDayClick = (day, dayOrgs, isCurrentMonth) => {
+    if (!isCurrentMonth) return;
+    
+    if (dayOrgs.length > 0) {
+      // Eğer o güne ait kayıt varsa, ilk kaydı düzenleme sayfasına git
+      navigate(`/duzenle/${dayOrgs[0].id}`);
+    } else {
+      // Kayıt yoksa yeni kayıt sayfasına o tarihi göndererek git
+      navigate(`/yeni?date=${format(day, 'yyyy-MM-dd')}`);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {/* Search Bar */}
@@ -160,7 +172,7 @@ const OrganizasyonListe = () => {
             return (
               <div 
                 key={day.toString()} 
-                onClick={() => isCurrentMonth && navigate(`/yeni?date=${format(day, 'yyyy-MM-dd')}`)}
+                onClick={() => handleDayClick(day, dayOrgs, isCurrentMonth)}
                 className={`
                   min-h-[50px] border-b border-r border-gray-50 p-1 flex flex-col items-center justify-start relative cursor-pointer transition-colors
                   ${!isCurrentMonth ? 'bg-gray-50' : 'bg-white hover:bg-indigo-50'}
