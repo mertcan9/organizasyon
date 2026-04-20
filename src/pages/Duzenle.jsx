@@ -876,6 +876,12 @@ const Duzenle = () => {
             </div>
           ) : (
             <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
+              {/* Logo ve Başlık */}
+              <div className="text-center mb-10">
+                <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
+                <div className="text-xl italic font-serif">Organizasyon</div>
+              </div>
+
               {/* Tekil Sözleşme Şablonu (Randevu, Düğün veya Kına) */}
               <div className="space-y-3 mb-6 text-[13px]">
                 <div className="flex border-b border-black pb-1">
