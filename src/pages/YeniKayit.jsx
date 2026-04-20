@@ -211,7 +211,6 @@ const YeniKayit = () => {
 
       // 3. Create finance record
       const isStandart = formData.sozlesme_turu === 'standart';
-      const isKinaOnly = formData.sozlesme_turu === 'kina';
       
       let total = 0;
       let kaparo = 0;
