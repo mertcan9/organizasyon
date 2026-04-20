@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard, FileText, Check, StickyNote } from 'lucide-react';
+import { User, Tag, CreditCard, FileText, Check } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 const YeniKayit = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
-  const printRef = useRef();
+  const pdfRef = useRef();
 
   const [formData, setFormData] = useState({
     damat_ad_soyad: '',
@@ -91,32 +91,43 @@ const YeniKayit = () => {
   }, [location.search]);
 
   const handlePDF = async () => {
+    if (!pdfRef.current) return;
     setLoading(true);
-    const element = printRef.current;
     
     try {
+      const element = pdfRef.current;
+      const originalStyle = element.style.cssText;
+      
+      // Geçici olarak görünür yap
+      element.style.cssText = `
+        display: block !important; 
+        position: fixed !important; 
+        left: 0 !important; 
+        top: 0 !important; 
+        width: 210mm !important; 
+        z-index: 9999 !important; 
+        background: white !important;
+        visibility: visible !important;
+      `;
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       const canvas = await html2canvas(element, {
-        scale: 3,
+        scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff',
-        width: 794,
-        height: 1123,
+        backgroundColor: '#ffffff'
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true
-      });
-
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const pdf = new jsPDF('p', 'mm', 'a4');
       pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
+      
+      element.style.cssText = originalStyle;
     } catch (error) {
-      console.error('PDF oluşturma hatası:', error);
-      alert('PDF oluşturulurken bir hata oluştu.');
+      console.error('PDF Error:', error);
+      alert('PDF oluşturulamadı.');
     } finally {
       setLoading(false);
     }
@@ -258,7 +269,7 @@ const YeniKayit = () => {
             disabled={loading}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50"
           >
-            {loading ? 'Kaydediliyor...' : <><Check size={18} /> Kaydet ve Onayla</>}
+            {loading ? 'Kaydediliyor...' : <span className="flex items-center gap-2"><Check size={18} /> Kaydet ve Onayla</span>}
           </button>
         </div>
       </div>
@@ -421,10 +432,10 @@ const YeniKayit = () => {
         </div>
       </form>
 
-      {/* Görünmez Yazdırma Alanı */}
+      {/* Görünmez PDF Alanı */}
       <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px', top: 0 }}>
-        <div ref={printRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
-          <div className="print-container" style={{ background: 'white', color: 'black' }}>
+        <div ref={pdfRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
+          <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
             {/* Logo ve Başlık */}
             <div className="text-center mb-10">
               <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
