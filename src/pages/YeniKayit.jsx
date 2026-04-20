@@ -68,6 +68,7 @@ const YeniKayit = () => {
     ],
     ek_istekler: '',
     kina_ek_istekler: '',
+    ek_notlar: '',
     toplam_ucret: '',
     kapora: '',
     kalan: '',
@@ -135,7 +136,7 @@ const YeniKayit = () => {
             kina_saat: formData.kina_saat,
             paket_icerigi: formData.paket_icerigi,
             kina_paketi: formData.kina_paketi,
-            ek_istekler: formData.ek_istekler,
+            ek_istekler: formData.ek_notlar,
             kina_ek_istekler: formData.kina_ek_istekler,
             _is_complex: true // Mark as complex data
           })
@@ -226,20 +227,14 @@ const YeniKayit = () => {
         <div className="flex gap-2">
           <button
             onClick={handlePDF}
-            className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-100 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 shadow-sm"
+            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-100"
           >
-            <FileText size={18} /> PDF İndir
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 shadow-sm"
-          >
-            <Printer size={18} /> Çıktı Al
+            <FileText size={18} /> PDF OLARAK AL
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-sm disabled:opacity-50"
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50"
           >
             {loading ? 'Kaydediliyor...' : <><Check size={18} /> Kaydet ve Onayla</>}
           </button>
@@ -314,13 +309,16 @@ const YeniKayit = () => {
                 </div>
               ))}
             </div>
-            <textarea 
-              name="ek_istekler" 
-              value={formData.ek_istekler} 
-              onChange={handleChange} 
-              placeholder="EXTRA İSTEKLER;" 
-              className="w-full p-2 border rounded-lg text-sm h-24 mt-4"
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">NOTLAR</label>
+            <textarea
+              name="ek_notlar"
+              value={formData.ek_notlar}
+              onChange={handleChange}
+              placeholder="Ek notlar..."
+              className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 h-24"
             />
+          </div>
           </div>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -403,131 +401,143 @@ const YeniKayit = () => {
 
       {/* Görünmez Yazdırma Alanı */}
       <div style={{ display: 'none' }}>
-        <div ref={printRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm' }}>
-          {/* Logo ve Başlık */}
-          <div className="text-center mb-10">
-            <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
-            <div className="text-xl italic font-serif">Organizasyon</div>
-          </div>
+        <div ref={printRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto' }}>
+          {/* Print Styles */}
+          <style>{`
+            @media print {
+              @page { size: A4; margin: 0; }
+              body { margin: 0; padding: 0; }
+              .print-container { width: 210mm; min-height: 297mm; padding: 20mm; margin: 0 auto; background: white !important; }
+              * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+            }
+          `}</style>
+          
+          <div className="print-container">
+            {/* Logo ve Başlık */}
+            <div className="text-center mb-10">
+              <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
+              <div className="text-xl italic font-serif">Organizasyon</div>
+            </div>
 
-          {/* Üst Bilgiler */}
-          <div className="space-y-3 mb-8 text-[13px]">
-            <div className="flex border-b border-black pb-1">
-              <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
-              <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
-              <span className="w-10 font-bold">TEL</span>
-              <span className="w-48 font-semibold">{formData.damat_tel || '...........................................'}</span>
-            </div>
-            <div className="flex border-b border-black pb-1">
-              <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
-              <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
-              <span className="w-10 font-bold">TEL</span>
-              <span className="w-48 font-semibold">{formData.gelin_tel || '...........................................'}</span>
-            </div>
-            <div className="flex border-b border-black pb-1">
-              <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
-              <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
-              <span className="w-10 font-bold">TEL</span>
-              <span className="w-48 font-semibold">{formData.yakin_tel || '...........................................'}</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-12 text-[12px] mb-8">
-            <div className="space-y-2">
-              <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON İÇERİĞİ :</span><span className="font-semibold">{formData.org_icerik || '........................'}</span></div>
-              <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON TARİHİ :</span><span className="font-semibold">{formatDate(formData.org_tarih)}</span></div>
-              <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON YERİ :</span><span className="font-semibold">{formData.org_yer || '........................'}</span></div>
-              <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON SAATİ :</span><span className="font-semibold">{formatTime(formData.org_saat)}</span></div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA TARİHİ :</span><span className="font-semibold">{formatDate(formData.kina_tarih)}</span></div>
-              <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA YERİ :</span><span className="font-semibold">{formData.kina_yer || '........................'}</span></div>
-              <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA SAATİ :</span><span className="font-semibold">{formatTime(formData.kina_saat)}</span></div>
-            </div>
-          </div>
-
-          {/* Dikey Çizgi Ayırıcı */}
-          <div className="grid grid-cols-2 gap-12 relative">
-            <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-black -translate-x-1/2"></div>
-            
-            {/* Paket İçeriği Sol */}
-            <div className="pr-6">
-              <div className="text-center font-bold text-xl mb-6 tracking-widest">PAKET İÇERİĞİ</div>
-              <div className="space-y-1.5">
-                {formData.paket_icerigi.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 text-[11px]">
-                    <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
-                      {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
-                    </div>
-                    <span className="flex-1 font-bold uppercase">{item.ad}</span>
-                    {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
-                  </div>
-                ))}
+            {/* Üst Bilgiler */}
+            <div className="space-y-3 mb-8 text-[13px]">
+              <div className="flex border-b border-black pb-1">
+                <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
+                <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
+                <span className="w-10 font-bold">TEL</span>
+                <span className="w-48 font-semibold text-right">{formData.damat_tel || '...........................................'}</span>
               </div>
-              <div className="mt-6">
-                <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
-                <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1">
-                  {formData.ek_istekler}
-                </div>
+              <div className="flex border-b border-black pb-1">
+                <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
+                <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
+                <span className="w-10 font-bold">TEL</span>
+                <span className="w-48 font-semibold text-right">{formData.gelin_tel || '...........................................'}</span>
               </div>
-              <div className="mt-8 space-y-2 text-[12px]">
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold">{formData.toplam_ucret || '................'} ₺</span></div>
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold">{formData.kapora || '................'} ₺</span></div>
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold">{formData.kalan || '................'} ₺</span></div>
+              <div className="flex border-b border-black pb-1">
+                <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
+                <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
+                <span className="w-10 font-bold">TEL</span>
+                <span className="w-48 font-semibold text-right">{formData.yakin_tel || '...........................................'}</span>
               </div>
             </div>
 
-            {/* Kına Paketi Sağ */}
-            <div className="pl-6">
-              <div className="text-center font-bold text-xl mb-6 tracking-widest">KINA PAKETİ</div>
-              <div className="space-y-1.5">
-                {formData.kina_paketi.map((item, idx) => (
-                  <div key={idx} className="flex flex-col">
-                    <div className="flex items-center gap-3 text-[11px]">
+            <div className="grid grid-cols-2 gap-12 text-[12px] mb-8">
+              <div className="space-y-2">
+                <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON İÇERİĞİ :</span><span className="font-semibold">{formData.org_icerik || '........................'}</span></div>
+                <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON TARİHİ :</span><span className="font-semibold">{formatDate(formData.org_tarih)}</span></div>
+                <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON YERİ :</span><span className="font-semibold">{formData.org_yer || '........................'}</span></div>
+                <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON SAATİ :</span><span className="font-semibold">{formatTime(formData.org_saat)}</span></div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA TARİHİ :</span><span className="font-semibold">{formatDate(formData.kina_tarih)}</span></div>
+                <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA YERİ :</span><span className="font-semibold">{formData.kina_yer || '........................'}</span></div>
+                <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA SAATİ :</span><span className="font-semibold">{formatTime(formData.kina_saat)}</span></div>
+              </div>
+            </div>
+
+            {/* Dikey Çizgi Ayırıcı */}
+            <div className="grid grid-cols-2 gap-12 relative">
+              <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-black -translate-x-1/2"></div>
+              
+              {/* Paket İçeriği Sol */}
+              <div className="pr-6">
+                <div className="text-center font-bold text-xl mb-6 tracking-widest">PAKET İÇERİĞİ</div>
+                <div className="space-y-1.5">
+                  {formData.paket_icerigi.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-[11px]">
                       <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
                         {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
                       </div>
                       <span className="flex-1 font-bold uppercase">{item.ad}</span>
                       {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
                     </div>
-                    {item.detay && (
-                      <div className="ml-7 text-[9px] font-medium leading-tight mt-0.5">
-                        {item.detay.split(', ').map((d, i) => (
-                          <span key={i} className="mr-2">. {d}</span>
-                        ))}
-                      </div>
-                    )}
+                  ))}
+                </div>
+                <div className="mt-6">
+                  <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                  <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                    {formData.ek_istekler}
                   </div>
-                ))}
-              </div>
-              <div className="mt-6">
-                <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
-                <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1">
-                  {formData.kina_ek_istekler}
+                </div>
+                <div className="mt-8 space-y-2 text-[12px]">
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.toplam_ucret || '................'} ₺</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kapora || '................'} ₺</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kalan || '................'} ₺</span></div>
                 </div>
               </div>
-              <div className="mt-8 space-y-2 text-[12px]">
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold">{formData.kina_toplam_ucret || '................'} ₺</span></div>
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold">{formData.kina_kapora || '................'} ₺</span></div>
-                <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold">{formData.kina_kalan || '................'} ₺</span></div>
+
+              {/* Kına Paketi Sağ */}
+              <div className="pl-6">
+                <div className="text-center font-bold text-xl mb-6 tracking-widest">KINA PAKETİ</div>
+                <div className="space-y-1.5">
+                  {formData.kina_paketi.map((item, idx) => (
+                    <div key={idx} className="flex flex-col">
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
+                          {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                        </div>
+                        <span className="flex-1 font-bold uppercase">{item.ad}</span>
+                        {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
+                      </div>
+                      {item.detay && (
+                        <div className="ml-7 text-[9px] font-medium leading-tight mt-0.5">
+                          {item.detay.split(', ').map((d, i) => (
+                            <span key={i} className="mr-2">. {d}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6">
+                  <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                  <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                    {formData.kina_ek_istekler}
+                  </div>
+                </div>
+                <div className="mt-8 space-y-2 text-[12px]">
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.kina_toplam_ucret || '................'} ₺</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kina_kapora || '................'} ₺</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kina_kalan || '................'} ₺</span></div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-10 text-center text-[12px] font-black bg-gray-200 py-2 border-2 border-black">
-            ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR
-          </div>
-
-          <div className="mt-12 grid grid-cols-2 gap-24 text-[11px]">
-            <div className="space-y-6">
-              <div className="font-bold text-sm">RANDEVUYU ALAN YETKİLİ</div>
-              <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
-              <div className="font-bold text-sm">İMZA</div>
+            <div className="mt-10 text-center text-[12px] font-black bg-gray-200 py-2 border-2 border-black">
+              ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR
             </div>
-            <div className="space-y-6">
-              <div className="font-bold text-sm">DÜĞÜN SAHİBİ YETKİLİ</div>
-              <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
-              <div className="font-bold text-sm">İMZA</div>
+
+            <div className="mt-12 grid grid-cols-2 gap-24 text-[11px]">
+              <div className="space-y-6">
+                <div className="font-bold text-sm">RANDEVUYU ALAN YETKİLİ</div>
+                <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                <div className="font-bold text-sm">İMZA</div>
+              </div>
+              <div className="space-y-6">
+                <div className="font-bold text-sm">DÜĞÜN SAHİBİ YETKİLİ</div>
+                <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                <div className="font-bold text-sm">İMZA</div>
+              </div>
             </div>
           </div>
         </div>
