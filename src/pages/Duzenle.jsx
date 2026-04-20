@@ -187,27 +187,21 @@ const Duzenle = () => {
     
     try {
       const element = pdfRef.current;
-      const originalStyle = element.style.cssText;
       
-      // Geçici olarak görünür yap
-      element.style.cssText = `
-        display: block !important; 
-        position: fixed !important; 
-        left: 0 !important; 
-        top: 0 !important; 
-        width: 210mm !important; 
-        z-index: 9999 !important; 
-        background: white !important;
-        visibility: visible !important;
-      `;
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 794, // 210mm at 96 DPI
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector('.pdf-container-root');
+          if (clonedElement) {
+            clonedElement.style.display = 'block';
+            clonedElement.style.visibility = 'visible';
+            clonedElement.style.opacity = '1';
+          }
+        }
       });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.9);
@@ -215,7 +209,6 @@ const Duzenle = () => {
       pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
       
-      element.style.cssText = originalStyle;
     } catch (error) {
       console.error('PDF Error:', error);
       alert('PDF oluşturulamadı.');
@@ -727,8 +720,16 @@ const Duzenle = () => {
       </form>
 
       {/* Görünmez PDF Alanı */}
-      <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px', top: 0 }}>
-        <div ref={pdfRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
+      <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', top: 0, left: 0, height: 0, overflow: 'hidden' }}>
+        <div ref={pdfRef} className="pdf-container-root p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', background: 'white' }}>
+          {/* PDF İçin Özel CSS */}
+          <style>{`
+            .pdf-container-root * { font-family: 'Times New Roman', Times, serif !important; }
+            .pdf-container { width: 100%; }
+            .check-box { width: 24px; height: 24px; border: 2px solid black; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+            .dotted-line { border-bottom: 2px dotted black; min-height: 20px; flex: 1; margin-left: 8px; }
+          `}</style>
+          
           {formData.sozlesme_turu === 'standart' ? (
             <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
               {/* Logo ve Başlık */}
