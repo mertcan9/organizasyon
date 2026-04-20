@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard } from 'lucide-react';
