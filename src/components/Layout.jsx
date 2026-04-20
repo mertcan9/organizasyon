@@ -15,9 +15,9 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-indigo-600 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-indigo-600 flex items-center gap-2 uppercase tracking-tight">
             <Calendar size={24} />
-            Asistan
+            Taç Organizasyon
           </h1>
         </div>
       </header>
