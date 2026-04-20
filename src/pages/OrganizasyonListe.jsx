@@ -15,9 +15,11 @@ import {
   isBefore
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic, Edit2, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const OrganizasyonListe = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +59,23 @@ const OrganizasyonListe = () => {
     const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
     
     window.open(url, '_blank');
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+      try {
+        const { error } = await supabase
+          .from('organizasyonlar')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        setOrgs(orgs.filter(org => org.id !== id));
+      } catch (error) {
+        console.error('Error deleting:', error);
+        alert('Silme işlemi başarısız oldu.');
+      }
+    }
   };
 
   // Calendar Logic
@@ -154,16 +173,6 @@ const OrganizasyonListe = () => {
         </div>
       </div>
 
-      {/* Voice Search Hint */}
-      <div className="flex flex-col items-center justify-center space-y-2 py-4">
-        <div className="p-4 bg-blue-50 rounded-full text-blue-600 shadow-sm active:scale-95 transition-transform cursor-pointer">
-          <Mic size={32} />
-        </div>
-        <p className="text-xs text-gray-400 font-medium">
-          (11 Ekim 2026 yada Aralık 2026 gibi...)
-        </p>
-      </div>
-
       {/* List View Below Calendar */}
       <div className="space-y-4">
         <h3 className="font-bold text-gray-800 px-1">Seçili Ayın Kayıtları</h3>
@@ -204,6 +213,18 @@ const OrganizasyonListe = () => {
               </div>
               
               <div className="flex gap-2">
+                <button 
+                  onClick={() => navigate(`/duzenle/${org.id}`)}
+                  className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                >
+                  <Edit2 size={20} />
+                </button>
+                <button 
+                  onClick={() => handleDelete(org.id)}
+                  className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 size={20} />
+                </button>
                 <a 
                   href={`tel:${org.musteriler?.telefon}`}
                   className="p-3 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-colors"
