@@ -154,7 +154,8 @@ const Duzenle = () => {
     }
   };
 
-  const handlePDF = async () => {
+  const handlePDF = async (e) => {
+    if (e) e.preventDefault();
     if (!pdfRef.current) return;
     setSaving(true);
     
@@ -199,6 +200,7 @@ const Duzenle = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (saving) return;
     setSaving(true);
 
     try {
@@ -314,7 +316,7 @@ const Duzenle = () => {
           <button type="button" onClick={handlePDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-100">
             <FileText size={18} /> PDF OLARAK AL
           </button>
-          <button onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50">
+          <button type="button" onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50">
             {saving ? 'Kaydediliyor...' : <span className="flex items-center gap-2"><Check size={18} /> Güncelle</span>}
           </button>
         </div>

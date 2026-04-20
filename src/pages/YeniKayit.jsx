@@ -90,7 +90,8 @@ const YeniKayit = () => {
     }
   }, [location.search]);
 
-  const handlePDF = async () => {
+  const handlePDF = async (e) => {
+    if (e) e.preventDefault();
     if (!pdfRef.current) return;
     setLoading(true);
     
@@ -135,6 +136,7 @@ const YeniKayit = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     try {
@@ -265,6 +267,7 @@ const YeniKayit = () => {
             <FileText size={18} /> PDF OLARAK AL
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={loading}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50"
