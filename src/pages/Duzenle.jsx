@@ -13,6 +13,7 @@ const Duzenle = () => {
   const pdfRef = useRef();
 
   const [formData, setFormData] = useState({
+    sozlesme_turu: 'standart', // 'standart' veya 'randevu'
     damat_ad_soyad: '',
     damat_tel: '',
     gelin_ad_soyad: '',
@@ -26,6 +27,8 @@ const Duzenle = () => {
     kina_tarih: '',
     kina_yer: '',
     kina_saat: '',
+    randevu_icerigi: [],
+    ikramliklar: [],
     paket_icerigi: [],
     kina_paketi: [],
     ek_istekler: '',
@@ -39,6 +42,26 @@ const Duzenle = () => {
     musteri_id: '',
     finans_id: ''
   });
+
+  const default_randevu_icerigi = [
+    { ad: '100 KİŞİ KAPASİTELİ MEKAN', secili: false },
+    { ad: 'GİRİŞ YOLU', secili: false },
+    { ad: 'FOTOĞRAF KÖŞESİ', secili: false },
+    { ad: 'KAHVE KÖŞESİ', secili: false },
+    { ad: 'YÜZÜK VE KAHVE TEPSİSİ', secili: false },
+    { ad: 'İNCİLİ KURDELA', secili: false },
+    { ad: 'TAKI ŞERİDİ VE İĞNELİK', secili: false },
+    { ad: 'PERSONEL', secili: false },
+    { ad: 'SERVİS HİZMETİ', secili: false },
+    { ad: 'ORGANİZASYON VE YÖNETİM', secili: false },
+  ];
+
+  const default_ikramliklar = [
+    { ad: 'ÇAY', secili: false },
+    { ad: 'KURU PASTA', secili: false },
+    { ad: 'MEYVE SUYU', secili: false },
+    { ad: 'SU', secili: false },
+  ];
 
   const default_paket_icerigi = [
     { ad: 'KONSEPT', secili: false },
@@ -119,6 +142,7 @@ const Duzenle = () => {
       const org_saat = data.tarih_saat ? data.tarih_saat.split('T')[1]?.slice(0, 5) : '';
 
       setFormData({
+        sozlesme_turu: complexData.sozlesme_turu || 'standart',
         damat_ad_soyad: data.musteriler?.ad_soyad || '',
         damat_tel: data.musteriler?.telefon || '',
         gelin_ad_soyad: complexData.gelin_ad_soyad || '',
@@ -134,6 +158,8 @@ const Duzenle = () => {
         kina_saat: complexData.kina_saat || '',
         paket_icerigi: complexData.paket_icerigi || default_paket_icerigi,
         kina_paketi: complexData.kina_paketi || default_kina_paketi,
+        randevu_icerigi: complexData.randevu_icerigi || default_randevu_icerigi,
+        ikramliklar: complexData.ikramliklar || default_ikramliklar,
         ek_istekler: cleanNotes,
         kina_ek_istekler: complexData.kina_ek_istekler || '',
         toplam_ucret: data.finans?.[0]?.toplam_tutar || '',
@@ -218,6 +244,7 @@ const Duzenle = () => {
           tarih_saat: `${formData.org_tarih}T${formData.org_saat || '00:00'}`,
           mekan_adi: formData.org_yer,
           ek_notlar: JSON.stringify({
+            sozlesme_turu: formData.sozlesme_turu,
             gelin_ad_soyad: formData.gelin_ad_soyad,
             gelin_tel: formData.gelin_tel,
             yakin_ad_soyad: formData.yakin_ad_soyad,
@@ -227,6 +254,8 @@ const Duzenle = () => {
             kina_saat: formData.kina_saat,
             paket_icerigi: formData.paket_icerigi,
             kina_paketi: formData.kina_paketi,
+            randevu_icerigi: formData.randevu_icerigi,
+            ikramliklar: formData.ikramliklar,
             ek_istekler: formData.ek_istekler,
             kina_ek_istekler: formData.kina_ek_istekler,
             _is_complex: true
