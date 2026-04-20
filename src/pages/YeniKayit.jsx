@@ -19,10 +19,14 @@ const YeniKayit = () => {
   });
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const dateParam = queryParams.get('date');
-    if (dateParam) {
-      setFormData(prev => ({ ...prev, tarih_saat: `${dateParam}T09:00` })); // Default time to 09:00
+    try {
+      const queryParams = new URLSearchParams(location.search);
+      const dateParam = queryParams.get('date');
+      if (dateParam) {
+        setFormData(prev => ({ ...prev, tarih_saat: `${dateParam}T09:00` }));
+      }
+    } catch (error) {
+      console.error('Date parse error:', error);
     }
   }, [location.search]);
 
