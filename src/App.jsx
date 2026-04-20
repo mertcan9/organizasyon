@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import YeniKayit from './pages/YeniKayit';
 import OrganizasyonListe from './pages/OrganizasyonListe';
 import Duzenle from './pages/Duzenle';
+import Defter from './pages/Defter';
 import Login from './pages/Login';
 
 function App() {
@@ -52,6 +53,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/yeni" element={<YeniKayit />} />
             <Route path="/liste" element={<OrganizasyonListe />} />
+            <Route path="/defter" element={<Defter />} />
             <Route path="/duzenle/:id" element={<Duzenle />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

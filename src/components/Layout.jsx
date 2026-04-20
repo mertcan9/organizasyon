@@ -15,6 +15,7 @@ const Layout = ({ children }) => {
   const navItems = [
     { path: '/', icon: Home, label: 'Ana Sayfa' },
     { path: '/liste', icon: List, label: 'Liste' },
+    { path: '/defter', icon: Calendar, label: 'Defter' },
     { path: '/yeni', icon: PlusCircle, label: 'Yeni Kayıt' },
   ];
 
