@@ -314,18 +314,18 @@ const Duzenle = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-4">
             <div className="font-bold text-indigo-600 flex items-center gap-2"><User size={18} /> DAMAT</div>
-            <input name="damat_ad_soyad" value={formData.damat_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border rounded-lg text-sm" />
-            <input name="damat_tel" value={formData.damat_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border rounded-lg text-sm" />
+            <input name="damat_ad_soyad" value={formData.damat_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+            <input name="damat_tel" value={formData.damat_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div className="space-y-4">
             <div className="font-bold text-pink-600 flex items-center gap-2"><User size={18} /> GELİN</div>
-            <input name="gelin_ad_soyad" value={formData.gelin_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border rounded-lg text-sm" />
-            <input name="gelin_tel" value={formData.gelin_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border rounded-lg text-sm" />
+            <input name="gelin_ad_soyad" value={formData.gelin_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+            <input name="gelin_tel" value={formData.gelin_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div className="space-y-4">
             <div className="font-bold text-gray-600 flex items-center gap-2"><User size={18} /> YAKINI</div>
-            <input name="yakin_ad_soyad" value={formData.yakin_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border rounded-lg text-sm" />
-            <input name="yakin_tel" value={formData.yakin_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border rounded-lg text-sm" />
+            <input name="yakin_ad_soyad" value={formData.yakin_ad_soyad} onChange={handleChange} placeholder="Ad Soyad" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+            <input name="yakin_tel" value={formData.yakin_tel} onChange={handleChange} placeholder="Telefon" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
           </div>
         </div>
 
@@ -334,18 +334,18 @@ const Duzenle = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <div className="font-bold text-indigo-600 flex items-center gap-2"><Tag size={18} /> ORGANİZASYON</div>
             <div className="grid grid-cols-1 gap-3">
-              <input name="org_icerik" value={formData.org_icerik} onChange={handleChange} placeholder="İçerik" className="w-full p-2 border rounded-lg text-sm" />
-              <input name="org_tarih" type="date" value={formData.org_tarih} onChange={handleChange} className="w-full p-2 border rounded-lg text-sm" />
-              <input name="org_yer" value={formData.org_yer} onChange={handleChange} placeholder="Yer" className="w-full p-2 border rounded-lg text-sm" />
-              <input name="org_saat" type="time" value={formData.org_saat} onChange={handleChange} className="w-full p-2 border rounded-lg text-sm" />
+              <input name="org_icerik" value={formData.org_icerik} onChange={handleChange} placeholder="İçerik" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+              <input name="org_tarih" type="date" value={formData.org_tarih} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+              <input name="org_yer" value={formData.org_yer} onChange={handleChange} placeholder="Yer" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+              <input name="org_saat" type="time" value={formData.org_saat} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <div className="font-bold text-pink-600 flex items-center gap-2"><Tag size={18} /> KINA</div>
             <div className="grid grid-cols-1 gap-3">
-              <input name="kina_tarih" type="date" value={formData.kina_tarih} onChange={handleChange} className="w-full p-2 border rounded-lg text-sm" />
-              <input name="kina_yer" value={formData.kina_yer} onChange={handleChange} placeholder="Kına Yeri" className="w-full p-2 border rounded-lg text-sm" />
-              <input name="kina_saat" type="time" value={formData.kina_saat} onChange={handleChange} className="w-full p-2 border rounded-lg text-sm" />
+              <input name="kina_tarih" type="date" value={formData.kina_tarih} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+              <input name="kina_yer" value={formData.kina_yer} onChange={handleChange} placeholder="Kına Yeri" className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
+              <input name="kina_saat" type="time" value={formData.kina_saat} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
         </div>
@@ -362,14 +362,14 @@ const Duzenle = () => {
                     {item.ad}
                   </label>
                   {item.sayi !== undefined && (
-                    <input placeholder="sayı" value={item.sayi} onChange={(e) => handleSayiChange('paket_icerigi', index, e.target.value)} className="w-16 p-1 border rounded text-xs text-center" />
+                    <input placeholder="sayı" value={item.sayi} onChange={(e) => handleSayiChange('paket_icerigi', index, e.target.value)} className="w-16 p-1 border border-gray-300 rounded text-xs text-center bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
                   )}
                 </div>
               ))}
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">EXTRA İSTEKLER</label>
-              <textarea name="ek_istekler" value={formData.ek_istekler} onChange={handleChange} placeholder="Notlar..." className="w-full p-2 border rounded-lg text-sm h-24" />
+              <textarea name="ek_istekler" value={formData.ek_istekler} onChange={handleChange} placeholder="Notlar..." className="w-full p-2 border border-gray-300 rounded-lg text-sm h-24 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
 
@@ -384,7 +384,7 @@ const Duzenle = () => {
                       {item.ad}
                     </label>
                     {item.sayi !== undefined && (
-                      <input placeholder="sayı" value={item.sayi} onChange={(e) => handleSayiChange('kina_paketi', index, e.target.value)} className="w-16 p-1 border rounded text-xs text-center" />
+                      <input placeholder="sayı" value={item.sayi} onChange={(e) => handleSayiChange('kina_paketi', index, e.target.value)} className="w-16 p-1 border border-gray-300 rounded text-xs text-center bg-white text-gray-900 focus:ring-2 focus:ring-pink-500" />
                     )}
                   </div>
                   {item.detay && <div className="ml-6 text-[10px] text-gray-500 leading-tight">{item.detay}</div>}
@@ -393,7 +393,7 @@ const Duzenle = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">KINA EXTRA İSTEKLER</label>
-              <textarea name="kina_ek_istekler" value={formData.kina_ek_istekler} onChange={handleChange} placeholder="Kına notları..." className="w-full p-2 border rounded-lg text-sm h-24" />
+              <textarea name="kina_ek_istekler" value={formData.kina_ek_istekler} onChange={handleChange} placeholder="Kına notları..." className="w-full p-2 border border-gray-300 rounded-lg text-sm h-24 bg-white text-gray-900 focus:ring-2 focus:ring-pink-500" />
             </div>
           </div>
         </div>
@@ -405,11 +405,11 @@ const Duzenle = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400">TOPLAM ÜCRET</label>
-                <input name="toplam_ucret" type="number" value={formData.toplam_ucret} onChange={handleChange} className="w-full p-2 border-b font-bold text-lg" />
+                <input name="toplam_ucret" type="number" value={formData.toplam_ucret} onChange={handleChange} className="w-full p-2 border-b border-gray-300 bg-white text-gray-900 font-bold text-lg focus:outline-none focus:border-indigo-600" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-gray-400">KAPORA</label>
-                <input name="kapora" type="number" value={formData.kapora} onChange={handleChange} className="w-full p-2 border-b font-bold text-lg" />
+                <input name="kapora" type="number" value={formData.kapora} onChange={handleChange} className="w-full p-2 border-b border-gray-300 bg-white text-gray-900 font-bold text-lg focus:outline-none focus:border-indigo-600" />
               </div>
             </div>
             <div className="bg-gray-50 p-3 rounded-xl">
