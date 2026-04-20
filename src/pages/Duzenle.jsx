@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard, ArrowLeft, Printer, FileText, Check } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -159,38 +158,30 @@ const Duzenle = () => {
     setSaving(true);
     const element = printRef.current;
     
-    // Geçici olarak görünür yap
-    const originalParentStyle = element.parentElement.style.cssText;
-    element.parentElement.style.cssText = 'display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 210mm !important; z-index: -9999 !important; background: white !important;';
-
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: 794,
+        width: 794,
+        height: 1123,
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
     } catch (error) {
       console.error('PDF oluşturma hatası:', error);
       alert('PDF oluşturulurken bir hata oluştu.');
     } finally {
-      element.parentElement.style.cssText = originalParentStyle;
       setSaving(false);
     }
   };
@@ -309,7 +300,7 @@ const Duzenle = () => {
           <h2 className="text-xl font-bold text-gray-800">Kaydı Düzenle</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-100">
+          <button type="button" onClick={handlePDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-100">
             <FileText size={18} /> PDF OLARAK AL
           </button>
           <button onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50">
@@ -430,30 +421,9 @@ const Duzenle = () => {
       </form>
 
       {/* Görünmez Yazdırma Alanı */}
-      <div style={{ display: 'none' }}>
-        <div ref={printRef}>
-          <style>{`
-            @media print {
-              @page { size: A4; margin: 0; }
-              body { margin: 0; padding: 0; background: #f3f4f6 !important; }
-              .print-wrapper { background: #f3f4f6 !important; padding: 20mm 0; display: flex; justify-content: center; }
-              .print-container { 
-                width: 210mm; 
-                min-height: 297mm; 
-                padding: 15mm 20mm; 
-                margin: 0 auto; 
-                background: white !important; 
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                box-sizing: border-box;
-                color: black !important;
-                font-family: serif !important;
-              }
-              * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-            }
-          `}</style>
-
-          <div className="print-wrapper">
-            <div className="print-container">
+      <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={printRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
+          <div className="print-container" style={{ background: 'white', color: 'black' }}>
               <div className="text-center mb-10">
                 <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
                 <div className="text-xl italic font-serif">Organizasyon</div>
