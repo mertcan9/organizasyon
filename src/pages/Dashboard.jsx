@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { format, isAfter, isBefore } from 'date-fns';
+import { format, isAfter } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { ArrowRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowRight, CheckCircle, AlertCircle, Edit2, Trash2, MessageCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ upcoming: 0, total: 0, unpaid: 0 });
   const [upcomingOrgs, setUpcomingOrgs] = useState([]);
@@ -46,6 +47,34 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+      try {
+        const { error } = await supabase
+          .from('organizasyonlar')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        fetchData(); // Refresh stats and list
+      } catch (error) {
+        console.error('Error deleting:', error);
+        alert('Silme işlemi başarısız oldu.');
+      }
+    }
+  };
+
+  const sendWhatsApp = (telefon, musteriAdi, tarih, toplam, kaparo) => {
+    const kalan = (parseFloat(toplam) || 0) - (parseFloat(kaparo) || 0);
+    const temizNo = telefon.replace(/\D/g, '');
+    const formatliTarih = format(new Date(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
+    
+    const mesaj = `Merhaba ${musteriAdi}, ${formatliTarih} tarihindeki organizasyonunuz onaylanmıştır. Kalan ödemeniz: ${kalan} TL'dir. İyi günler dileriz.`;
+    const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
+    
+    window.open(url, '_blank');
   };
 
   if (loading) return <div className="flex justify-center py-10">Yükleniyor...</div>;
@@ -106,6 +135,35 @@ const Dashboard = () => {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 font-medium">{org.mekan_adi}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-4 pt-3 border-t border-gray-50 flex justify-end gap-2">
+                <button 
+                  onClick={() => navigate(`/duzenle/${org.id}`)}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                >
+                  <Edit2 size={18} />
+                </button>
+                <button 
+                  onClick={() => handleDelete(org.id)}
+                  className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button 
+                  onClick={() => sendWhatsApp(
+                    org.musteriler?.telefon, 
+                    org.musteriler?.ad_soyad, 
+                    org.tarih_saat,
+                    org.finans?.[0]?.toplam_tutar,
+                    org.finans?.[0]?.alinan_kaparo
+                  )}
+                  className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors flex items-center gap-1 font-bold text-xs"
+                >
+                  <MessageCircle size={18} />
+                  <span>Mesaj</span>
+                </button>
               </div>
             </div>
           )) : (
