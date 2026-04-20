@@ -159,19 +159,19 @@ const Duzenle = () => {
     setSaving(true);
     const element = printRef.current;
     
-    // Görünmez alanı geçici olarak görünür yap (ama ekran dışında)
-    const originalStyle = element.parentElement.style.display;
-    element.parentElement.style.display = 'block';
-    element.parentElement.style.position = 'absolute';
-    element.parentElement.style.left = '-9999px';
-    element.parentElement.style.top = '0';
+    // Geçici olarak görünür yap
+    const originalParentStyle = element.parentElement.style.cssText;
+    element.parentElement.style.cssText = 'display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 210mm !important; z-index: -9999 !important; background: white !important;';
 
     try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -181,20 +181,16 @@ const Duzenle = () => {
         format: 'a4'
       });
 
-      const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Sözleşme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
+      pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
     } catch (error) {
       console.error('PDF oluşturma hatası:', error);
       alert('PDF oluşturulurken bir hata oluştu.');
     } finally {
-      element.parentElement.style.display = originalStyle;
-      element.parentElement.style.position = '';
-      element.parentElement.style.left = '';
-      element.parentElement.style.top = '';
+      element.parentElement.style.cssText = originalParentStyle;
       setSaving(false);
     }
   };
