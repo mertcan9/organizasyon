@@ -123,20 +123,25 @@ const YeniKayit = () => {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: 794, // 210mm at 96 DPI
+        width: 794,
         onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.querySelector('[ref="pdfRef"]') || clonedDoc.body.querySelector('.pdf-container-root');
+          // Klonlanan dökümanda elementin görünür olduğundan emin ol
+          const clonedElement = clonedDoc.getElementById('pdf-render-area');
           if (clonedElement) {
-            clonedElement.style.display = 'block';
+            clonedElement.style.position = 'relative';
+            clonedElement.style.left = '0';
             clonedElement.style.visibility = 'visible';
-            clonedElement.style.opacity = '1';
+            clonedElement.style.display = 'block';
           }
         }
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
       
     } catch (error) {
@@ -676,14 +681,31 @@ const YeniKayit = () => {
       </form>
 
       {/* Görünmez PDF Alanı */}
-      <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', top: 0, left: 0, height: 0, overflow: 'hidden' }}>
-        <div ref={pdfRef} className="pdf-container-root p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', background: 'white' }}>
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', zIndex: -1 }}>
+        <div id="pdf-render-area" ref={pdfRef} className="pdf-container-root p-12 bg-white text-black" style={{ width: '210mm', minHeight: '297mm', background: 'white' }}>
           {/* PDF İçin Özel CSS */}
           <style>{`
-            .pdf-container-root * { font-family: 'Times New Roman', Times, serif !important; }
-            .pdf-container { width: 100%; }
-            .check-box { width: 24px; height: 24px; border: 2px solid black; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-            .dotted-line { border-bottom: 2px dotted black; min-height: 20px; flex: 1; margin-left: 8px; }
+            .pdf-container-root { font-family: 'Times New Roman', Times, serif !important; color: black !important; background: white !important; }
+            .pdf-container-root * { color: black !important; }
+            .pdf-container { width: 100%; display: block !important; }
+            .flex { display: flex !important; }
+            .flex-1 { flex: 1 !important; }
+            .justify-between { justify-content: space-between !important; }
+            .items-center { align-items: center !important; }
+            .border-b { border-bottom: 1px solid black !important; }
+            .border-b-2 { border-bottom: 2px solid black !important; }
+            .font-bold { font-weight: bold !important; }
+            .text-center { text-align: center !important; }
+            .uppercase { text-transform: uppercase !important; }
+            .check-box { width: 22px; height: 22px; border: 2px solid black !important; display: inline-flex !important; align-items: center; justify-content: center; margin-right: 10px; flex-shrink: 0; }
+            .dotted-line { border-bottom: 2px dotted black !important; min-height: 20px; flex: 1; margin-left: 8px; }
+            .grid { display: grid !important; }
+            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .gap-12 { gap: 3rem !important; }
+            .mb-10 { margin-bottom: 2.5rem !important; }
+            .mb-8 { margin-bottom: 2rem !important; }
+            .mb-6 { margin-bottom: 1.5rem !important; }
+            .space-y-3 > * + * { margin-top: 0.75rem !important; }
           `}</style>
           
           {formData.sozlesme_turu === 'standart' ? (
@@ -739,9 +761,9 @@ const YeniKayit = () => {
                   <div className="text-center font-bold text-xl mb-6 tracking-widest">PAKET İÇERİĞİ</div>
                   <div className="space-y-1.5">
                     {formData.paket_icerigi.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-[11px]">
-                        <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
-                          {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                      <div key={idx} className="flex items-center gap-3 text-[11px] mb-1">
+                        <div className="check-box" style={{ width: '16px', height: '16px' }}>
+                          {item.secili && <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                         </div>
                         <span className="flex-1 font-bold uppercase">{item.ad}</span>
                         {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
@@ -750,7 +772,7 @@ const YeniKayit = () => {
                   </div>
                   <div className="mt-6">
                     <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
-                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                    <div className="dotted-line" style={{ minHeight: '60px' }}>
                       {formData.ek_notlar}
                     </div>
                   </div>
@@ -766,10 +788,10 @@ const YeniKayit = () => {
                   <div className="text-center font-bold text-xl mb-6 tracking-widest">KINA PAKETİ</div>
                   <div className="space-y-1.5">
                     {formData.kina_paketi.map((item, idx) => (
-                      <div key={idx} className="flex flex-col">
+                      <div key={idx} className="flex flex-col mb-1">
                         <div className="flex items-center gap-3 text-[11px]">
-                          <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
-                            {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                          <div className="check-box" style={{ width: '16px', height: '16px' }}>
+                            {item.secili && <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                           </div>
                           <span className="flex-1 font-bold uppercase">{item.ad}</span>
                           {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
@@ -786,7 +808,7 @@ const YeniKayit = () => {
                   </div>
                   <div className="mt-6">
                     <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
-                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                    <div className="dotted-line" style={{ minHeight: '60px' }}>
                       {formData.kina_ek_istekler}
                     </div>
                   </div>
@@ -805,8 +827,8 @@ const YeniKayit = () => {
                   {formData.ikramliklar.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-[11px]">
                       <span className="font-bold">{item.ad}</span>
-                      <div className="w-4 h-4 border border-black flex items-center justify-center">
-                        {item.secili && <Check size={12} className="stroke-[3px]" />}
+                      <div className="check-box" style={{ width: '16px', height: '16px' }}>
+                        {item.secili && <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                       </div>
                     </div>
                   ))}
@@ -887,9 +909,9 @@ const YeniKayit = () => {
               <div className="space-y-3 mb-10 ml-4">
                 {(formData.sozlesme_turu === 'randevu' ? formData.randevu_icerigi : 
                   formData.sozlesme_turu === 'dugun' ? formData.paket_icerigi : formData.kina_paketi).map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 text-[16px]">
-                    <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
-                      {item.secili && <Check size={20} className="stroke-[4px]" />}
+                  <div key={idx} className="flex items-center gap-4 text-[16px] mb-2">
+                    <div className="check-box">
+                      {item.secili && <span style={{ fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
                     </div>
                     <span className="font-bold uppercase tracking-wide">{item.ad}</span>
                     {item.sayi !== undefined && <span className="text-[12px] font-semibold italic">( {item.sayi || '....'} adet )</span>}
@@ -903,8 +925,8 @@ const YeniKayit = () => {
                   {formData.ikramliklar.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-[14px]">
                       <span className="font-bold">{item.ad}</span>
-                      <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
-                        {item.secili && <Check size={18} className="stroke-[4px]" />}
+                      <div className="check-box">
+                        {item.secili && <span style={{ fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
                       </div>
                     </div>
                   ))}
