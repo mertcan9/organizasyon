@@ -285,41 +285,41 @@ const YeniKayit = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col gap-2 w-full md:w-auto">
           <h2 className="text-xl font-bold text-gray-800">Yeni Organizasyon Kaydı</h2>
-          <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
+          <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto no-scrollbar w-full md:w-fit whitespace-nowrap">
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'standart' }))}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               STANDART (DÜĞÜN/KINA)
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'dugun' }))}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               DÜĞÜN SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'kina' }))}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               KINA SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'randevu' }))}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               RANDEVU İÇERİĞİ
             </button>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto justify-end">
           <button
             type="button"
             onClick={handlePDF}
