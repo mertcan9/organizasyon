@@ -148,9 +148,10 @@ const OrganizasyonListe = () => {
             return (
               <div 
                 key={day.toString()} 
+                onClick={() => isCurrentMonth && navigate(`/yeni?date=${format(day, 'yyyy-MM-dd')}`)}
                 className={`
-                  min-h-[50px] border-b border-r border-gray-50 p-1 flex flex-col items-center justify-start relative
-                  ${!isCurrentMonth ? 'bg-gray-50' : 'bg-white'}
+                  min-h-[50px] border-b border-r border-gray-50 p-1 flex flex-col items-center justify-start relative cursor-pointer transition-colors
+                  ${!isCurrentMonth ? 'bg-gray-50' : 'bg-white hover:bg-indigo-50'}
                   ${idx % 7 === 6 ? 'border-r-0' : ''}
                 `}
               >

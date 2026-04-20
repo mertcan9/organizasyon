@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Save, User, Phone, Calendar as CalendarIcon, MapPin, Tag, CreditCard } from 'lucide-react';
 
 const YeniKayit = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     ad_soyad: '',
@@ -16,6 +17,14 @@ const YeniKayit = () => {
     toplam_tutar: '',
     alinan_kaparo: ''
   });
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const dateParam = queryParams.get('date');
+    if (dateParam) {
+      setFormData(prev => ({ ...prev, tarih_saat: `${dateParam}T09:00` })); // Default time to 09:00
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
