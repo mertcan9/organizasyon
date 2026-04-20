@@ -117,6 +117,13 @@ const Dashboard = () => {
       </section>
 
       <Link 
+        to="/liste"
+        className="block w-full bg-slate-800 text-white text-center py-4 rounded-2xl font-bold shadow-lg shadow-slate-200 active:scale-95 transition-transform mb-4"
+      >
+        Takvimi Görüntüle
+      </Link>
+
+      <Link 
         to="/yeni"
         className="block w-full bg-indigo-600 text-white text-center py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-transform"
       >
