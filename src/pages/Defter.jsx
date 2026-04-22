@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
   format, 
@@ -22,7 +22,6 @@ import {
   ChevronRight, 
   Download, 
   TrendingUp, 
-  Wallet, 
   Clock, 
   FileText,
   Calendar as CalendarIcon,

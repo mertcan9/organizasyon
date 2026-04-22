@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useParams } from 'react-router-dom';
 import { User, Tag, CreditCard, ArrowLeft, FileText, Check } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { format, parseISO } from 'date-fns';
 
 const Duzenle = () => {
   const { id } = useParams();
@@ -134,12 +135,13 @@ const Duzenle = () => {
         } else {
           cleanNotes = data.ek_notlar || '';
         }
-      } catch (e) {
+      } catch {
         cleanNotes = data.ek_notlar || '';
       }
 
-      const org_tarih = data.tarih_saat ? data.tarih_saat.split('T')[0] : '';
-      const org_saat = data.tarih_saat ? data.tarih_saat.split('T')[1]?.slice(0, 5) : '';
+      const orgDt = data.tarih_saat ? parseISO(data.tarih_saat) : null;
+      const org_tarih = orgDt ? format(orgDt, 'yyyy-MM-dd') : '';
+      const org_saat = orgDt ? format(orgDt, 'HH:mm') : '';
 
       setFormData({
         sozlesme_turu: complexData.sozlesme_turu || 'standart',
@@ -241,12 +243,13 @@ const Duzenle = () => {
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
       const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
+      const tarihSaatIso = new Date(`${orgDate}T${orgTime || '00:00'}`).toISOString();
 
       const { error: orgError } = await supabase
         .from('organizasyonlar')
         .update({
           tur: orgType,
-          tarih_saat: `${orgDate}T${orgTime || '00:00'}`,
+          tarih_saat: tarihSaatIso,
           mekan_adi: orgPlace,
           ek_notlar: JSON.stringify({
             sozlesme_turu: formData.sozlesme_turu,

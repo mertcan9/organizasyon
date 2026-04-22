@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, PlusCircle, List, Calendar, LogOut } from 'lucide-react';
 import { supabase } from '../supabaseClient';

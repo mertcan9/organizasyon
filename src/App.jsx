@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase, supabaseConfigError } from './supabaseClient';
 import Layout from './components/Layout';
@@ -10,29 +10,16 @@ import Defter from './pages/Defter';
 import Login from './pages/Login';
 
 function App() {
-  if (!supabase) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="max-w-md w-full bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-          <div className="text-lg font-extrabold text-red-600">Kurulum Hatası</div>
-          <div className="text-sm text-gray-700 font-medium">{supabaseConfigError}</div>
-          <div className="text-xs text-gray-500">
-            Vercel → Project Settings → Environment Variables alanına bu iki değeri ekleyin ve yeniden deploy edin.
-          </div>
-          <div className="text-xs font-mono text-gray-800 bg-gray-50 p-3 rounded-xl">
-            VITE_SUPABASE_URL
-            <br />
-            VITE_SUPABASE_ANON_KEY
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      setSession(null);
+      setLoading(false);
+      return undefined;
+    }
+
     // Mevcut oturumu kontrol et
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -52,6 +39,25 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  if (!supabase) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-md w-full bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-3">
+          <div className="text-lg font-extrabold text-red-600">Kurulum Hatası</div>
+          <div className="text-sm text-gray-700 font-medium">{supabaseConfigError}</div>
+          <div className="text-xs text-gray-500">
+            Vercel → Project Settings → Environment Variables alanına bu iki değeri ekleyin ve yeniden deploy edin.
+          </div>
+          <div className="text-xs font-mono text-gray-800 bg-gray-50 p-3 rounded-xl">
+            VITE_SUPABASE_URL
+            <br />
+            VITE_SUPABASE_ANON_KEY
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

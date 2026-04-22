@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Tag, CreditCard, FileText, Check } from 'lucide-react';
@@ -178,13 +178,14 @@ const YeniKayit = () => {
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
       const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
+      const tarihSaatIso = new Date(`${orgDate}T${orgTime || '00:00'}`).toISOString();
 
       const { data: orgData, error: orgError } = await supabase
         .from('organizasyonlar')
         .insert([{
           musteri_id: customerData.id,
           tur: orgType,
-          tarih_saat: `${orgDate}T${orgTime || '00:00'}`,
+          tarih_saat: tarihSaatIso,
           mekan_adi: orgPlace,
           ek_notlar: JSON.stringify({
               sozlesme_turu: formData.sozlesme_turu,

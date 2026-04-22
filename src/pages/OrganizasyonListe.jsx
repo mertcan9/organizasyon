@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
   format, 
@@ -11,12 +11,10 @@ import {
   isSameDay, 
   addMonths, 
   subMonths,
-  isAfter,
-  isBefore,
   parseISO
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Mic, Edit2, Trash2, StickyNote } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Search, ChevronLeft, ChevronRight, Edit2, Trash2, StickyNote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const OrganizasyonListe = () => {
@@ -58,7 +56,9 @@ const OrganizasyonListe = () => {
         const data = JSON.parse(ek_notlar);
         return data.ek_istekler || '';
       }
-    } catch (e) {}
+    } catch {
+      return ek_notlar;
+    }
     return ek_notlar;
   };
 
