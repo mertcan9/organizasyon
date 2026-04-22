@@ -132,15 +132,28 @@ const YeniKayit = () => {
         height: captureHeight,
         windowWidth: captureWidth,
         windowHeight: captureHeight,
+        scrollX: 0,
+        scrollY: 0,
         allowTaint: true,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.getElementById('pdf-content');
           if (clonedElement) {
+            const wrapper = clonedElement.parentElement;
+            if (wrapper) {
+              wrapper.style.position = 'static';
+              wrapper.style.left = '0';
+              wrapper.style.top = '0';
+              wrapper.style.visibility = 'visible';
+              wrapper.style.width = '210mm';
+            }
             clonedElement.style.position = 'static';
             clonedElement.style.left = '0';
             clonedElement.style.top = '0';
             clonedElement.style.visibility = 'visible';
           }
+          clonedDoc.documentElement.style.height = `${captureHeight}px`;
+          clonedDoc.body.style.height = `${captureHeight}px`;
+          clonedDoc.body.style.overflow = 'visible';
         }
       });
       
