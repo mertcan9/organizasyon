@@ -43,6 +43,7 @@ const Defter = () => {
   const [data, setData] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [expenseError, setExpenseError] = useState(null);
+  const [expenseSubmitError, setExpenseSubmitError] = useState(null);
   const [stats, setStats] = useState({ total: 0, collected: 0, remaining: 0, totalExpenses: 0, netProfit: 0 });
   const [monthlyChart, setMonthlyChart] = useState([]);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -175,6 +176,7 @@ const Defter = () => {
     if (!newExpense.ad || !newExpense.tutar) return;
 
     try {
+      setExpenseSubmitError(null);
       const tutarVal = parseFloat(String(newExpense.tutar).replace(',', '.'));
       if (!Number.isFinite(tutarVal)) {
         alert('Tutar geçersiz.');
@@ -191,11 +193,18 @@ const Defter = () => {
 
       if (error) {
         if (error.code === '42P01') {
-          alert('Harcamalar tablosu bulunamadı. Lütfen Supabase üzerinden tabloyu oluşturun.');
+          const msg = 'Harcamalar tablosu bulunamadı (public.harcamalar). Supabase üzerinden tabloyu oluşturun.';
+          setExpenseSubmitError(msg);
+          alert(msg);
         } else if (error.code === '42501' || error.code === 'PGRST301') {
-          alert('Harcama ekleme yetkisi yok. Supabase RLS/policy kontrol edin.');
+          const msg = 'Harcama ekleme yetkisi yok. Supabase RLS/policy kontrol edin.';
+          setExpenseSubmitError(msg);
+          alert(msg);
         } else {
-          throw error;
+          const msg = `${error.message || 'Harcama eklenemedi.'}${error.code ? ` (code: ${error.code})` : ''}`;
+          setExpenseSubmitError(msg);
+          alert(msg);
+          return;
         }
       } else {
         setNewExpense({ ad: '', tutar: '', tarih: format(new Date(), 'yyyy-MM-dd') });
@@ -204,7 +213,9 @@ const Defter = () => {
       }
     } catch (error) {
       console.error('Harcama ekleme hatası:', error);
-      alert(error?.message ? `Harcama eklenemedi: ${error.message}` : 'Harcama eklenemedi.');
+      const msg = error?.message ? `Harcama eklenemedi: ${error.message}` : 'Harcama eklenemedi.';
+      setExpenseSubmitError(msg);
+      alert(msg);
     }
   };
 
@@ -382,6 +393,11 @@ const Defter = () => {
           <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl font-bold text-sm">Kaydet</button>
           <button type="button" onClick={() => setShowExpenseForm(false)} className="px-6 bg-gray-100 text-gray-600 py-3 rounded-2xl font-bold text-sm">İptal</button>
         </div>
+        {expenseSubmitError && (
+          <div className="text-[11px] font-bold text-red-600">
+            {expenseSubmitError}
+          </div>
+        )}
       </form>
     </div>
   );
