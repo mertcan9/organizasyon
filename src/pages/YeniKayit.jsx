@@ -42,6 +42,8 @@ const YeniKayit = () => {
       { ad: 'MEYVE SUYU', secili: false },
       { ad: 'SU', secili: false },
     ],
+    personel_ad: '',
+    personel_ucret: '',
     kina_tarih: '',
     kina_yer: '',
     kina_saat: '',
@@ -202,6 +204,8 @@ const YeniKayit = () => {
               kina_paketi: formData.kina_paketi,
               randevu_icerigi: formData.randevu_icerigi,
               ikramliklar: formData.ikramliklar,
+              personel_ad: formData.personel_ad,
+              personel_ucret: formData.personel_ucret,
               ek_istekler: formData.ek_notlar, 
               kina_ek_istekler: formData.kina_ek_istekler,
               _tz_fixed: true,
@@ -242,6 +246,27 @@ const YeniKayit = () => {
         }]);
 
       if (financeError) throw financeError;
+
+      const personelAdi = (formData.personel_ad || '').trim();
+      const personelUcret = parseFloat(String(formData.personel_ucret || '').replace(',', '.'));
+      if (orgDate && Number.isFinite(personelUcret) && personelUcret > 0) {
+        const { error: expError } = await supabase
+          .from('harcamalar')
+          .insert([{
+            ad: personelAdi ? `Personel - ${personelAdi}` : 'Personel',
+            tutar: personelUcret,
+            tarih: orgDate
+          }]);
+        if (expError) {
+          if (expError.code === '42P01') {
+            alert('Personel ödemesi Defter\'e eklenemedi: Harcamalar tablosu bulunamadı (public.harcamalar).');
+          } else if (expError.code === '42501' || expError.code === 'PGRST301') {
+            alert('Personel ödemesi Defter\'e eklenemedi: Harcama ekleme yetkisi yok. Supabase RLS/policy kontrol edin.');
+          } else {
+            alert(`${expError.message || 'Personel ödemesi Defter\'e eklenemedi.'}${expError.code ? ` (code: ${expError.code})` : ''}`);
+          }
+        }
+      }
 
       alert('Kayıt başarıyla oluşturuldu!');
       navigate('/');
@@ -475,6 +500,29 @@ const YeniKayit = () => {
                   </label>
                 ))}
               </div>
+              <div className="mt-5">
+                <div className="font-bold text-[11px] text-gray-500 uppercase tracking-wider mb-2">PERSONEL</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    name="personel_ad"
+                    value={formData.personel_ad}
+                    onChange={handleChange}
+                    placeholder="Personel Adı"
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <input
+                    name="personel_ucret"
+                    type="number"
+                    value={formData.personel_ucret}
+                    onChange={handleChange}
+                    placeholder="Ödenen Ücret (₺)"
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="mt-2 text-[10px] font-semibold text-gray-400">
+                  Buraya girilen ücret, seçilen tarihe Defter’de harcama olarak eklenir.
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -638,6 +686,29 @@ const YeniKayit = () => {
                       <span className="text-sm font-bold text-gray-700">{item.ad}</span>
                     </label>
                   ))}
+                </div>
+                <div className="mt-5">
+                  <div className="font-bold text-[11px] text-gray-500 uppercase tracking-wider mb-2">PERSONEL</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      name="personel_ad"
+                      value={formData.personel_ad}
+                      onChange={handleChange}
+                      placeholder="Personel Adı"
+                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      name="personel_ucret"
+                      type="number"
+                      value={formData.personel_ucret}
+                      onChange={handleChange}
+                      placeholder="Ödenen Ücret (₺)"
+                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="mt-2 text-[10px] font-semibold text-gray-400">
+                    Buraya girilen ücret, seçilen tarihe Defter’de harcama olarak eklenir.
+                  </div>
                 </div>
               </div>
 
