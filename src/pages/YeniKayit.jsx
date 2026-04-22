@@ -119,6 +119,8 @@ const YeniKayit = () => {
     
     try {
       const element = pdfRef.current;
+      const captureWidth = element.scrollWidth || 794;
+      const captureHeight = element.scrollHeight || 1123;
       
       // Capturing directly from the DOM (element is fixed and hidden from view)
       const canvas = await html2canvas(element, {
@@ -126,8 +128,10 @@ const YeniKayit = () => {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: 794, // Standard A4 width at 96 DPI
-        windowWidth: 794,
+        width: captureWidth, // Standard A4 width at 96 DPI
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
         allowTaint: true,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.getElementById('pdf-content');
