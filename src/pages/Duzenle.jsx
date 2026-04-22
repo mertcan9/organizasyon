@@ -139,7 +139,21 @@ const Duzenle = () => {
         cleanNotes = data.ek_notlar || '';
       }
 
-      const orgDt = data.tarih_saat ? parseISO(data.tarih_saat) : null;
+      const tzFixed = complexData?._tz_fixed === true;
+      const rawDt = data.tarih_saat ? parseISO(data.tarih_saat) : null;
+      const orgDt = rawDt
+        ? tzFixed
+          ? rawDt
+          : new Date(
+              rawDt.getUTCFullYear(),
+              rawDt.getUTCMonth(),
+              rawDt.getUTCDate(),
+              rawDt.getUTCHours(),
+              rawDt.getUTCMinutes(),
+              rawDt.getUTCSeconds(),
+              rawDt.getUTCMilliseconds()
+            )
+        : null;
       const org_tarih = orgDt ? format(orgDt, 'yyyy-MM-dd') : '';
       const org_saat = orgDt ? format(orgDt, 'HH:mm') : '';
 
@@ -243,7 +257,9 @@ const Duzenle = () => {
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
       const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
-      const tarihSaatIso = new Date(`${orgDate}T${orgTime || '00:00'}`).toISOString();
+      const [y, m, d] = (orgDate || '').split('-').map((n) => parseInt(n, 10));
+      const [hh, mm] = (orgTime || '00:00').split(':').map((n) => parseInt(n, 10));
+      const tarihSaatIso = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0).toISOString();
 
       const { error: orgError } = await supabase
         .from('organizasyonlar')
@@ -269,6 +285,7 @@ const Duzenle = () => {
             kina_toplam_ucret: formData.kina_toplam_ucret,
             kina_kapora: formData.kina_kapora,
             kina_kalan: formData.kina_kalan,
+            _tz_fixed: true,
             _is_complex: true
           })
         })

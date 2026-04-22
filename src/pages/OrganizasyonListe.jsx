@@ -23,10 +23,24 @@ const OrganizasyonListe = () => {
   const [orgs, setOrgs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDayKey, setSelectedDayKey] = useState('');
 
   useEffect(() => {
     fetchOrgs();
   }, []);
+
+  const parseMeta = (ek_notlar) => {
+    if (!ek_notlar) return { tzFixed: false };
+    try {
+      if (ek_notlar.startsWith('{')) {
+        const data = JSON.parse(ek_notlar);
+        return { tzFixed: data?._tz_fixed === true };
+      }
+    } catch {
+      return { tzFixed: false };
+    }
+    return { tzFixed: false };
+  };
 
   const fetchOrgs = async () => {
     try {
@@ -41,7 +55,26 @@ const OrganizasyonListe = () => {
         .order('tarih_saat', { ascending: false });
 
       if (error) throw error;
-      setOrgs(data);
+      const enriched = (data || []).map((org) => {
+        const raw = org.tarih_saat ? parseISO(org.tarih_saat) : null;
+        const meta = parseMeta(org.ek_notlar);
+        const eventDate = raw
+          ? meta.tzFixed
+            ? raw
+            : new Date(
+                raw.getUTCFullYear(),
+                raw.getUTCMonth(),
+                raw.getUTCDate(),
+                raw.getUTCHours(),
+                raw.getUTCMinutes(),
+                raw.getUTCSeconds(),
+                raw.getUTCMilliseconds()
+              )
+          : null;
+
+        return { ...org, _eventDate: eventDate };
+      });
+      setOrgs(enriched);
     } catch (error) {
       console.error('Error fetching orgs:', error);
     } finally {
@@ -65,7 +98,7 @@ const OrganizasyonListe = () => {
   const sendWhatsApp = (telefon, musteriAdi, tarih, toplam, kaparo) => {
     const kalan = (parseFloat(toplam) || 0) - (parseFloat(kaparo) || 0);
     const temizNo = telefon.replace(/\D/g, '');
-    const formatliTarih = format(parseISO(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
+    const formatliTarih = tarih ? format(tarih, 'dd MMMM yyyy HH:mm', { locale: tr }) : '';
     
     const mesaj = `Merhaba ${musteriAdi}, ${formatliTarih} tarihindeki organizasyonunuz onaylanmıştır. Kalan ödemeniz: ${kalan} TL'dir. İyi günler dileriz.`;
     const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
@@ -101,28 +134,32 @@ const OrganizasyonListe = () => {
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
   const getOrgsForDay = (day) => {
-    return orgs.filter(org => isSameDay(parseISO(org.tarih_saat), day));
+    return orgs.filter((org) => org._eventDate && isSameDay(org._eventDate, day));
   };
 
-  const filteredOrgs = orgs.filter(org => {
-    const matchesSearch = org.musteriler?.ad_soyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         org.tur.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredOrgs = orgs.filter((org) => {
+    const matchesSearch =
+      org.musteriler?.ad_soyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.tur.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
-
-  if (loading) return <div className="text-center py-10">Yükleniyor...</div>;
 
   const handleDayClick = (day, dayOrgs, isCurrentMonth) => {
     if (!isCurrentMonth) return;
     
     if (dayOrgs.length > 0) {
-      // Eğer o güne ait kayıt varsa, ilk kaydı düzenleme sayfasına git
-      navigate(`/duzenle/${dayOrgs[0].id}`);
+      setSelectedDayKey(format(day, 'yyyy-MM-dd'));
     } else {
       // Kayıt yoksa yeni kayıt sayfasına o tarihi göndererek git
       navigate(`/yeni?date=${format(day, 'yyyy-MM-dd')}`);
     }
   };
+
+  const monthOrgs = filteredOrgs
+    .filter((org) => org._eventDate && isSameMonth(org._eventDate, currentDate))
+    .filter((org) => (selectedDayKey ? format(org._eventDate, 'yyyy-MM-dd') === selectedDayKey : true));
+
+  if (loading) return <div className="text-center py-10">Yükleniyor...</div>;
 
   return (
     <div className="space-y-6 pb-20">
@@ -200,10 +237,21 @@ const OrganizasyonListe = () => {
 
       {/* List View Below Calendar */}
       <div className="space-y-4">
-        <h3 className="font-bold text-gray-800 px-1">Seçili Ayın Kayıtları</h3>
-        {filteredOrgs
-          .filter(org => isSameMonth(parseISO(org.tarih_saat), currentDate))
-          .map((org) => (
+        <div className="flex items-center justify-between px-1">
+          <h3 className="font-bold text-gray-800">
+            {selectedDayKey ? `${selectedDayKey} Kayıtları` : 'Seçili Ayın Kayıtları'}
+          </h3>
+          {selectedDayKey && (
+            <button
+              type="button"
+              onClick={() => setSelectedDayKey('')}
+              className="text-xs font-bold text-indigo-600"
+            >
+              Filtreyi Temizle
+            </button>
+          )}
+        </div>
+        {monthOrgs.map((org) => (
           <div key={org.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-start mb-3">
               <div>
@@ -212,10 +260,10 @@ const OrganizasyonListe = () => {
               </div>
               <div className="text-right bg-indigo-50 p-2 rounded-xl min-w-[70px]">
                 <p className="text-xs font-bold text-indigo-700">
-                  {format(parseISO(org.tarih_saat), 'dd MMM', { locale: tr })}
+                  {org._eventDate ? format(org._eventDate, 'dd MMM', { locale: tr }) : ''}
                 </p>
                 <p className="text-[10px] text-indigo-400 font-bold">
-                  {format(parseISO(org.tarih_saat), 'HH:mm')}
+                  {org._eventDate ? format(org._eventDate, 'HH:mm') : ''}
                 </p>
               </div>
             </div>
@@ -266,7 +314,7 @@ const OrganizasyonListe = () => {
                   onClick={() => sendWhatsApp(
                     org.musteriler?.telefon, 
                     org.musteriler?.ad_soyad, 
-                    org.tarih_saat,
+                    org._eventDate,
                     org.finans?.[0]?.toplam_tutar,
                     org.finans?.[0]?.alinan_kaparo
                   )}

@@ -32,7 +32,39 @@ const Dashboard = () => {
       if (error) throw error;
 
       const now = new Date();
-      const upcoming = data.filter(org => isAfter(parseISO(org.tarih_saat), now));
+      const parseMeta = (ek_notlar) => {
+        if (!ek_notlar) return { tzFixed: false };
+        try {
+          if (ek_notlar.startsWith('{')) {
+            const parsed = JSON.parse(ek_notlar);
+            return { tzFixed: parsed?._tz_fixed === true };
+          }
+        } catch {
+          return { tzFixed: false };
+        }
+        return { tzFixed: false };
+      };
+
+      const enriched = (data || []).map((org) => {
+        const raw = org.tarih_saat ? parseISO(org.tarih_saat) : null;
+        const meta = parseMeta(org.ek_notlar);
+        const eventDate = raw
+          ? meta.tzFixed
+            ? raw
+            : new Date(
+                raw.getUTCFullYear(),
+                raw.getUTCMonth(),
+                raw.getUTCDate(),
+                raw.getUTCHours(),
+                raw.getUTCMinutes(),
+                raw.getUTCSeconds(),
+                raw.getUTCMilliseconds()
+              )
+          : null;
+        return { ...org, _eventDate: eventDate };
+      });
+
+      const upcoming = enriched.filter((org) => org._eventDate && isAfter(org._eventDate, now));
       const unpaid = data.filter(org => org.finans?.[0]?.odeme_durumu !== 'Ödendi');
 
       setStats({
@@ -69,7 +101,7 @@ const Dashboard = () => {
   const sendWhatsApp = (telefon, musteriAdi, tarih, toplam, kaparo) => {
     const kalan = (parseFloat(toplam) || 0) - (parseFloat(kaparo) || 0);
     const temizNo = telefon.replace(/\D/g, '');
-    const formatliTarih = format(parseISO(tarih), 'dd MMMM yyyy HH:mm', { locale: tr });
+    const formatliTarih = tarih ? format(tarih, 'dd MMMM yyyy HH:mm', { locale: tr }) : '';
     
     const mesaj = `Merhaba ${musteriAdi}, ${formatliTarih} tarihindeki organizasyonunuz onaylanmıştır. Kalan ödemeniz: ${kalan} TL'dir. İyi günler dileriz.`;
     const url = `https://wa.me/90${temizNo}?text=${encodeURIComponent(mesaj)}`;
@@ -114,10 +146,10 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-indigo-600">
-                    {format(parseISO(org.tarih_saat), 'dd MMM', { locale: tr })}
+                    {org._eventDate ? format(org._eventDate, 'dd MMM', { locale: tr }) : ''}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {format(parseISO(org.tarih_saat), 'HH:mm')}
+                    {org._eventDate ? format(org._eventDate, 'HH:mm') : ''}
                   </p>
                 </div>
               </div>
@@ -155,7 +187,7 @@ const Dashboard = () => {
                   onClick={() => sendWhatsApp(
                     org.musteriler?.telefon, 
                     org.musteriler?.ad_soyad, 
-                    org.tarih_saat,
+                    org._eventDate,
                     org.finans?.[0]?.toplam_tutar,
                     org.finans?.[0]?.alinan_kaparo
                   )}

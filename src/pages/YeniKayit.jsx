@@ -178,7 +178,9 @@ const YeniKayit = () => {
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
       const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
-      const tarihSaatIso = new Date(`${orgDate}T${orgTime || '00:00'}`).toISOString();
+      const [y, m, d] = (orgDate || '').split('-').map((n) => parseInt(n, 10));
+      const [hh, mm] = (orgTime || '00:00').split(':').map((n) => parseInt(n, 10));
+      const tarihSaatIso = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0).toISOString();
 
       const { data: orgData, error: orgError } = await supabase
         .from('organizasyonlar')
@@ -202,6 +204,7 @@ const YeniKayit = () => {
               ikramliklar: formData.ikramliklar,
               ek_istekler: formData.ek_notlar, 
               kina_ek_istekler: formData.kina_ek_istekler,
+              _tz_fixed: true,
               _is_complex: true
             })
         }])
