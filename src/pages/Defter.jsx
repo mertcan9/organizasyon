@@ -230,6 +230,32 @@ const Defter = () => {
     }
   };
 
+  const handleDeleteOrg = async (org) => {
+    const name = org?.musteriler?.ad_soyad || 'İsimsiz';
+    if (!window.confirm(`${name} kaydını silmek istediğinize emin misiniz?`)) return;
+    try {
+      setLoading(true);
+
+      const { error: finError } = await supabase.from('finans').delete().eq('organizasyon_id', org.id);
+      if (finError && finError.code !== 'PGRST116') throw finError;
+
+      const { error: orgError } = await supabase.from('organizasyonlar').delete().eq('id', org.id);
+      if (orgError) throw orgError;
+
+      fetchData();
+    } catch (error) {
+      const code = error?.code;
+      if (code === '42501' || code === 'PGRST301') {
+        alert('Silme yetkisi yok. Supabase RLS/policy kontrol edin.');
+      } else {
+        alert(`${error?.message || 'Silme işlemi başarısız oldu.'}${code ? ` (code: ${code})` : ''}`);
+      }
+      console.error('Organizasyon silme hatası:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
@@ -443,10 +469,14 @@ const Defter = () => {
           <>
             {/* İşler */}
             {activeOrgs.map(org => (
-              <button
+              <div
                 key={org.id}
-                type="button"
                 onClick={() => navigate(`/duzenle/${org.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') navigate(`/duzenle/${org.id}`);
+                }}
+                role="button"
+                tabIndex={0}
                 className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-md transition-all"
               >
                 <div className="flex items-center gap-4">
@@ -458,20 +488,36 @@ const Defter = () => {
                     <p className="text-xs text-gray-500">{org._eventDate ? format(org._eventDate, 'HH:mm') : ''}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-800 text-sm">{parseFloat(org.finans?.[0]?.toplam_tutar || 0).toLocaleString('tr-TR')} ₺</p>
-                  <p className={`text-[10px] font-bold uppercase ${org.finans?.[0]?.odeme_durumu === 'Ödendi' ? 'text-green-500' : 'text-orange-500'}`}>
-                    {org.finans?.[0]?.odeme_durumu || 'Bekliyor'}
-                  </p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="font-bold text-gray-800 text-sm">{parseFloat(org.finans?.[0]?.toplam_tutar || 0).toLocaleString('tr-TR')} ₺</p>
+                    <p className={`text-[10px] font-bold uppercase ${org.finans?.[0]?.odeme_durumu === 'Ödendi' ? 'text-green-500' : 'text-orange-500'}`}>
+                      {org.finans?.[0]?.odeme_durumu || 'Bekliyor'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteOrg(org);
+                    }}
+                    className="p-2 text-gray-300 hover:text-red-500"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
 
             {showPaidArchive && paidOrgs.map((org) => (
-              <button
+              <div
                 key={org.id}
-                type="button"
                 onClick={() => navigate(`/duzenle/${org.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') navigate(`/duzenle/${org.id}`);
+                }}
+                role="button"
+                tabIndex={0}
                 className="w-full text-left bg-gray-50 rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
               >
                 <div className="flex items-center gap-4">
@@ -483,11 +529,23 @@ const Defter = () => {
                     <p className="text-xs text-gray-500">{org._eventDate ? format(org._eventDate, 'HH:mm') : ''}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-800 text-sm">{parseFloat(org.finans?.[0]?.toplam_tutar || 0).toLocaleString('tr-TR')} ₺</p>
-                  <p className="text-[10px] font-bold uppercase text-green-600">Ödendi</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="font-bold text-gray-800 text-sm">{parseFloat(org.finans?.[0]?.toplam_tutar || 0).toLocaleString('tr-TR')} ₺</p>
+                    <p className="text-[10px] font-bold uppercase text-green-600">Ödendi</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteOrg(org);
+                    }}
+                    className="p-2 text-gray-300 hover:text-red-500"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
             
             {/* Harcamalar */}

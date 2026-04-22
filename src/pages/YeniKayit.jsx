@@ -760,12 +760,44 @@ const YeniKayit = () => {
       {/* Görünmez PDF Alanı */}
       <div style={{ position: 'fixed', left: '-20000px', top: 0, width: '210mm', zIndex: -9999 }}>
         <div ref={pdfRef} id="pdf-content" style={{ width: '210mm', padding: '15mm', background: 'white', color: 'black', boxSizing: 'border-box', fontFamily: "'Times New Roman', serif" }}>
-          
-          {/* HEADER */}
-          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
-            <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>TAÇ ORGANİZASYON</h1>
-            <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>Profesyonel Organizasyon Hizmetleri</p>
-          </div>
+          {formData.sozlesme_turu === 'randevu' ? (
+            <div style={{ marginTop: '120px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '50%', fontWeight: 'bold', fontSize: '16px', padding: '10px 0', verticalAlign: 'top', color: 'black' }}>
+                      RANDEVUYU ALAN YETKİLİ
+                    </td>
+                    <td style={{ width: '50%', fontWeight: 'bold', fontSize: '16px', padding: '10px 0', verticalAlign: 'top', color: 'black' }}>
+                      DÜĞÜN SAHİBİ YETKİLİ
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
+                      İSİM SOYİSİM : ........................................
+                    </td>
+                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
+                      İSİM SOYİSİM : ........................................
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
+                      İMZA : ........................................
+                    </td>
+                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
+                      İMZA : ........................................
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <>
+              {/* HEADER */}
+              <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
+                <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>TAÇ ORGANİZASYON</h1>
+                <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>Profesyonel Organizasyon Hizmetleri</p>
+              </div>
 
           {/* CUSTOMER INFO TABLE - REAL HTML TABLE FOR STABILITY */}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
@@ -904,7 +936,8 @@ const YeniKayit = () => {
               </tr>
             </tbody>
           </table>
-
+            </>
+          )}
         </div>
       </div>
     </div>
