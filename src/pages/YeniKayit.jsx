@@ -142,10 +142,22 @@ const YeniKayit = () => {
       
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
       
     } catch (error) {
@@ -760,44 +772,17 @@ const YeniKayit = () => {
       {/* Görünmez PDF Alanı */}
       <div style={{ position: 'fixed', left: '-20000px', top: 0, width: '210mm', zIndex: -9999 }}>
         <div ref={pdfRef} id="pdf-content" style={{ width: '210mm', padding: '15mm', background: 'white', color: 'black', boxSizing: 'border-box', fontFamily: "'Times New Roman', serif" }}>
-          {formData.sozlesme_turu === 'randevu' ? (
-            <div style={{ marginTop: '120px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ width: '50%', fontWeight: 'bold', fontSize: '16px', padding: '10px 0', verticalAlign: 'top', color: 'black' }}>
-                      RANDEVUYU ALAN YETKİLİ
-                    </td>
-                    <td style={{ width: '50%', fontWeight: 'bold', fontSize: '16px', padding: '10px 0', verticalAlign: 'top', color: 'black' }}>
-                      DÜĞÜN SAHİBİ YETKİLİ
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
-                      İSİM SOYİSİM : ........................................
-                    </td>
-                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
-                      İSİM SOYİSİM : ........................................
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
-                      İMZA : ........................................
-                    </td>
-                    <td style={{ fontWeight: 'bold', fontSize: '16px', padding: '20px 0', verticalAlign: 'top', color: 'black' }}>
-                      İMZA : ........................................
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <>
-              {/* HEADER */}
-              <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
-                <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>TAÇ ORGANİZASYON</h1>
-                <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>Profesyonel Organizasyon Hizmetleri</p>
-              </div>
+          {/* HEADER */}
+          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
+            <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>
+              {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 'TAÇ ORGANİZASYON'}
+            </h1>
+            {formData.sozlesme_turu !== 'randevu' && (
+              <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>
+                Profesyonel Organizasyon Hizmetleri
+              </p>
+            )}
+          </div>
 
           {/* CUSTOMER INFO TABLE - REAL HTML TABLE FOR STABILITY */}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
@@ -822,34 +807,43 @@ const YeniKayit = () => {
             <tbody>
               <tr>
                 <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>TARİH:</span>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{formatDate(formData.sozlesme_turu === 'kina' ? formData.kina_tarih : formData.org_tarih)}</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ:' : 'TARİH:'}
+                  </span>
+                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
+                    {formatDate(formData.sozlesme_turu === 'kina' ? formData.kina_tarih : formData.org_tarih)}
+                  </span>
                 </td>
                 <td style={{ width: '4%' }}></td>
                 <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>SAAT:</span>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{formatTime(formData.sozlesme_turu === 'kina' ? formData.kina_saat : formData.org_saat)}</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ:' : 'SAAT:'}
+                  </span>
+                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
+                    {formatTime(formData.sozlesme_turu === 'kina' ? formData.kina_saat : formData.org_saat)}
+                  </span>
                 </td>
               </tr>
             </tbody>
           </table>
 
-          {/* VENUE ROW */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <tbody>
-              <tr style={{ borderBottom: '1px solid black' }}>
-                <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', verticalAlign: 'middle' }}>ETKİNLİK YERİ:</td>
-                <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>
-                  {(formData.sozlesme_turu === 'kina' ? formData.kina_yer : formData.org_yer) || '..........................................................................................'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {formData.sozlesme_turu !== 'randevu' && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid black' }}>
+                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', verticalAlign: 'middle' }}>ETKİNLİK YERİ:</td>
+                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>
+                    {(formData.sozlesme_turu === 'kina' ? formData.kina_yer : formData.org_yer) || '..........................................................................................'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
 
           {/* TITLE */}
           <div style={{ textAlign: 'center', fontSize: '28px', fontWeight: 'bold', margin: '25px 0', borderTop: '2px solid black', borderBottom: '2px solid black', padding: '12px 0', background: '#f5f5f5', textTransform: 'uppercase', color: 'black' }}>
-            {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
-             formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 
+            {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' :
+             formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' :
              formData.sozlesme_turu === 'kina' ? 'KINA PAKET İÇERİĞİ' : 'ORGANİZASYON İÇERİĞİ'}
           </div>
 
@@ -861,7 +855,7 @@ const YeniKayit = () => {
               [...formData.paket_icerigi, ...formData.kina_paketi]).map((item, idx) => (
               <div key={idx} style={{ width: '48%', float: 'left', height: '35px', marginBottom: '5px', clear: idx % 2 === 0 ? 'left' : 'none' }}>
                 <div style={{ width: '22px', height: '22px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '20px', marginRight: '10px', fontWeight: 'bold', fontSize: '18px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? '✓' : ''}
+                  {item.secili ? 'X' : ''}
                 </div>
                 <span style={{ fontSize: '15px', fontWeight: 'bold', verticalAlign: 'middle', display: 'inline-block' }}>{item.ad}</span>
                 {item.sayi && <span style={{ marginLeft: '5px', fontSize: '13px', verticalAlign: 'middle' }}>({item.sayi})</span>}
@@ -876,7 +870,7 @@ const YeniKayit = () => {
             {formData.ikramliklar.map((item, idx) => (
               <div key={idx} style={{ width: '25%', float: 'left', height: '35px' }}>
                 <div style={{ width: '20px', height: '20px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '18px', marginRight: '8px', fontWeight: 'bold', fontSize: '16px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? '✓' : ''}
+                  {item.secili ? 'X' : ''}
                 </div>
                 <span style={{ fontSize: '14px', fontWeight: 'bold', verticalAlign: 'middle' }}>{item.ad}</span>
               </div>
@@ -886,17 +880,29 @@ const YeniKayit = () => {
 
           {/* EXTRA REQUESTS */}
           <div style={{ marginTop: '15px', clear: 'both' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px', color: 'black' }}>EKSTRA İSTEKLER:</div>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px', color: 'black' }}>
+              {formData.sozlesme_turu === 'randevu' ? 'EXTRA İSTEKLER :' : 'EKSTRA İSTEKLER:'}
+            </div>
             <div style={{ border: '2px solid black', padding: '12px', minHeight: '120px', fontSize: '15px', fontWeight: 'bold', lineHeight: '1.6', color: 'black' }}>
-              {formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_notlar}
+              {(formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_notlar) || '........................................................................................................................'}
             </div>
           </div>
 
           {/* FOOTER RULES */}
           <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 'bold', margin: '30px 0', padding: '15px', border: '2px solid black', background: '#f0f0f0', lineHeight: '1.6', color: 'black' }}>
-            SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. KURALLAR KESİN VE NETTİR.<br/>
-            MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EK ÜCRET ALINIR.<br/>
-            ÖDEMELER TAÇ EVENT GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
+            {formData.sozlesme_turu === 'randevu' ? (
+              <>
+                SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. RANDEVU İÇERİĞİ KURALLARI KESİN VE NETTİR.<br/>
+                MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EXTRA MEKAN VE HİZMET ÜCRETİ TALEP EDİLECEKTİR.<br/>
+                ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
+              </>
+            ) : (
+              <>
+                SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. KURALLAR KESİN VE NETTİR.<br/>
+                MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EK ÜCRET ALINIR.<br/>
+                ÖDEMELER TAÇ EVENT GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
+              </>
+            )}
           </div>
 
           {/* FINANCE TABLE */}
@@ -904,13 +910,15 @@ const YeniKayit = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
                 {[
-                  { label: 'TOPLAM ÜCRET:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || '0' },
-                  { label: 'KAPORA:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || '0' },
-                  { label: 'KALAN:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || '0', isLast: true }
+                  { label: 'TOPLAM ÜCRET :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0') },
+                  { label: 'KAPORA :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0') },
+                  { label: 'KALAN :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0'), isLast: true }
                 ].map((row, i) => (
                   <tr key={i} style={{ borderBottom: row.isLast ? '4px solid black' : '2px solid black' }}>
                     <td style={{ padding: '10px 0', fontWeight: 'bold', fontSize: '17px', color: 'black' }}>{row.label}</td>
-                    <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 'bold', fontSize: row.isLast ? '24px' : '17px', color: 'black' }}>{row.val} ₺</td>
+                    <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 'bold', fontSize: row.isLast ? '24px' : '17px', color: 'black' }}>
+                      {formData.sozlesme_turu === 'randevu' ? row.val : `${row.val} ₺`}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -923,21 +931,39 @@ const YeniKayit = () => {
             <tbody>
               <tr>
                 <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  SÖZLEŞMEYİ ALAN YETKİLİ<br/><br/>
-                  İSİM SOYİSİM:<br/><br/>
-                  İMZA
+                  {formData.sozlesme_turu === 'randevu' ? (
+                    <>
+                      RANDEVUYU ALAN YETKİLİ<br/><br/>
+                      İSİM SOYİSİM : ........................................<br/><br/>
+                      İMZA : ........................................
+                    </>
+                  ) : (
+                    <>
+                      SÖZLEŞMEYİ ALAN YETKİLİ<br/><br/>
+                      İSİM SOYİSİM:<br/><br/>
+                      İMZA
+                    </>
+                  )}
                 </td>
                 <td style={{ width: '10%' }}></td>
                 <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  MÜŞTERİ YETKİLİ<br/><br/>
-                  İSİM SOYİSİM:<br/><br/>
-                  İMZA
+                  {formData.sozlesme_turu === 'randevu' ? (
+                    <>
+                      DÜĞÜN SAHİBİ YETKİLİ<br/><br/>
+                      İSİM SOYİSİM : ........................................<br/><br/>
+                      İMZA : ........................................
+                    </>
+                  ) : (
+                    <>
+                      MÜŞTERİ YETKİLİ<br/><br/>
+                      İSİM SOYİSİM:<br/><br/>
+                      İMZA
+                    </>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
-            </>
-          )}
         </div>
       </div>
     </div>
