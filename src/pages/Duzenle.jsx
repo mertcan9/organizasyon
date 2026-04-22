@@ -11,6 +11,7 @@ const Duzenle = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const pdfRef = useRef();
 
   const [formData, setFormData] = useState({
@@ -332,6 +333,67 @@ const Duzenle = () => {
     }
   };
 
+  const handleMarkPaid = async () => {
+    if (!formData.finans_id) return;
+    if (!window.confirm('Ödeme alındı olarak işaretlensin mi?')) return;
+    if (markingPaid) return;
+    setMarkingPaid(true);
+
+    try {
+      const isKinaOnly = formData.sozlesme_turu === 'kina';
+      const isStandart = formData.sozlesme_turu === 'standart';
+
+      let total = 0;
+      if (isStandart) {
+        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
+      } else if (isKinaOnly) {
+        total = parseFloat(formData.kina_toplam_ucret) || 0;
+      } else {
+        total = parseFloat(formData.toplam_ucret) || 0;
+      }
+
+      const { error } = await supabase
+        .from('finans')
+        .update({
+          alinan_kaparo: total,
+          odeme_durumu: 'Ödendi'
+        })
+        .eq('id', formData.finans_id);
+
+      if (error) throw error;
+
+      setFormData((prev) => {
+        if (isStandart) {
+          const orgTotal = parseFloat(prev.toplam_ucret) || 0;
+          const kinaTotal = parseFloat(prev.kina_toplam_ucret) || 0;
+          return {
+            ...prev,
+            kapora: String(orgTotal),
+            kalan: '0',
+            kina_kapora: String(kinaTotal),
+            kina_kalan: '0'
+          };
+        }
+        if (isKinaOnly) {
+          return {
+            ...prev,
+            kina_kapora: String(total),
+            kina_kalan: '0'
+          };
+        }
+        return {
+          ...prev,
+          kapora: String(total),
+          kalan: '0'
+        };
+      });
+    } catch (error) {
+      alert(error?.message ? `Ödeme işaretlenemedi: ${error.message}` : 'Ödeme işaretlenemedi.');
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => {
@@ -596,6 +658,21 @@ const Duzenle = () => {
                   <div className="text-2xl font-black text-pink-600">{formData.kina_kalan || '0'} ₺</div>
                 </div>
               </div>
+              <div className="md:col-span-2">
+                <button
+                  type="button"
+                  onClick={handleMarkPaid}
+                  disabled={
+                    markingPaid ||
+                    !formData.finans_id ||
+                    ((parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0)) >=
+                      ((parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0))
+                  }
+                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {markingPaid ? 'İşleniyor...' : 'Ödeme Alındı'}
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -739,6 +816,22 @@ const Duzenle = () => {
                     {formData.sozlesme_turu === 'kina' ? (formData.kina_kalan || '0') : (formData.kalan || '0')} ₺
                   </div>
                 </div>
+              </div>
+              <div className="border-t pt-6">
+                <button
+                  type="button"
+                  onClick={handleMarkPaid}
+                  disabled={
+                    markingPaid ||
+                    !formData.finans_id ||
+                    (formData.sozlesme_turu === 'kina'
+                      ? (parseFloat(formData.kina_kapora) || 0) >= (parseFloat(formData.kina_toplam_ucret) || 0)
+                      : (parseFloat(formData.kapora) || 0) >= (parseFloat(formData.toplam_ucret) || 0))
+                  }
+                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {markingPaid ? 'İşleniyor...' : 'Ödeme Alındı'}
+                </button>
               </div>
             </div>
           </>

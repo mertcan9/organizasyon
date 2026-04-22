@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 import { 
   format, 
   startOfMonth, 
@@ -35,14 +36,17 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 const Defter = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [expenseError, setExpenseError] = useState(null);
   const [stats, setStats] = useState({ total: 0, collected: 0, remaining: 0, totalExpenses: 0, netProfit: 0 });
   const [monthlyChart, setMonthlyChart] = useState([]);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [showPaidArchive, setShowPaidArchive] = useState(false);
   const [newExpense, setNewExpense] = useState({ ad: '', tutar: '', tarih: format(new Date(), 'yyyy-MM-dd') });
   const pdfRef = useRef(null);
 
@@ -65,27 +69,59 @@ const Defter = () => {
         .order('tarih_saat', { ascending: true });
 
       if (orgError) throw orgError;
-      setData(allOrgs || []);
+      const parseMeta = (ek_notlar) => {
+        if (!ek_notlar) return { tzFixed: false };
+        try {
+          if (ek_notlar.startsWith('{')) {
+            const parsed = JSON.parse(ek_notlar);
+            return { tzFixed: parsed?._tz_fixed === true };
+          }
+        } catch {
+          return { tzFixed: false };
+        }
+        return { tzFixed: false };
+      };
+
+      const enrichedOrgs = (allOrgs || []).map((org) => {
+        const raw = org.tarih_saat ? parseISO(org.tarih_saat) : null;
+        const meta = parseMeta(org.ek_notlar);
+        const eventDate = raw
+          ? meta.tzFixed
+            ? raw
+            : new Date(
+                raw.getUTCFullYear(),
+                raw.getUTCMonth(),
+                raw.getUTCDate(),
+                raw.getUTCHours(),
+                raw.getUTCMinutes(),
+                raw.getUTCSeconds(),
+                raw.getUTCMilliseconds()
+              )
+          : null;
+        return { ...org, _eventDate: eventDate };
+      });
+
+      setData(enrichedOrgs);
 
       // 2. Harcamaları çek
+      const yearStartDate = format(yearStart, 'yyyy-MM-dd');
+      const yearEndDate = format(yearEnd, 'yyyy-MM-dd');
       const { data: allExpenses, error: expError } = await supabase
         .from('harcamalar')
         .select('*')
-        .gte('tarih', yearStart.toISOString())
-        .lte('tarih', yearEnd.toISOString());
+        .gte('tarih', yearStartDate)
+        .lte('tarih', yearEndDate);
 
       // Harcamalar tablosu yoksa hata vermesin, boş dönsün
       const currentExpenses = expError ? [] : (allExpenses || []);
       setExpenses(currentExpenses);
+      setExpenseError(expError ? (expError.message || 'Harcama verisi alınamadı.') : null);
 
       // 3. İstatistikleri hesapla (MEVCUT AY İÇİN)
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(currentDate);
       
-      const monthOrgs = allOrgs.filter(org => {
-        const d = parseISO(org.tarih_saat);
-        return d >= monthStart && d <= monthEnd;
-      });
+      const monthOrgs = enrichedOrgs.filter((org) => org._eventDate && org._eventDate >= monthStart && org._eventDate <= monthEnd);
 
       const monthExpenses = currentExpenses.filter(exp => {
         const d = parseISO(exp.tarih);
@@ -112,7 +148,7 @@ const Defter = () => {
       // 4. Grafik Verisi (Yıllık)
       const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
       const chartData = months.map(m => {
-        const mOrgs = allOrgs.filter(org => isSameMonth(parseISO(org.tarih_saat), m));
+        const mOrgs = enrichedOrgs.filter((org) => org._eventDate && isSameMonth(org._eventDate, m));
         const mExps = currentExpenses.filter(exp => isSameMonth(parseISO(exp.tarih), m));
         
         const mTotal = mOrgs.reduce((acc, org) => acc + (parseFloat(org.finans?.[0]?.toplam_tutar) || 0), 0);
@@ -139,17 +175,25 @@ const Defter = () => {
     if (!newExpense.ad || !newExpense.tutar) return;
 
     try {
+      const tutarVal = parseFloat(String(newExpense.tutar).replace(',', '.'));
+      if (!Number.isFinite(tutarVal)) {
+        alert('Tutar geçersiz.');
+        return;
+      }
+
       const { error } = await supabase
         .from('harcamalar')
         .insert([{
           ad: newExpense.ad,
-          tutar: parseFloat(newExpense.tutar),
+          tutar: tutarVal,
           tarih: newExpense.tarih
         }]);
 
       if (error) {
         if (error.code === '42P01') {
           alert('Harcamalar tablosu bulunamadı. Lütfen Supabase üzerinden tabloyu oluşturun.');
+        } else if (error.code === '42501' || error.code === 'PGRST301') {
+          alert('Harcama ekleme yetkisi yok. Supabase RLS/policy kontrol edin.');
         } else {
           throw error;
         }
@@ -160,7 +204,7 @@ const Defter = () => {
       }
     } catch (error) {
       console.error('Harcama ekleme hatası:', error);
-      alert('Harcama eklenemedi.');
+      alert(error?.message ? `Harcama eklenemedi: ${error.message}` : 'Harcama eklenemedi.');
     }
   };
 
@@ -210,7 +254,7 @@ const Defter = () => {
             </div>
           ))}
           {calendarDays.map((day, idx) => {
-            const dayOrgs = data.filter(org => isSameDay(parseISO(org.tarih_saat), day));
+            const dayOrgs = data.filter((org) => org._eventDate && isSameDay(org._eventDate, day));
             const dayExps = expenses.filter(exp => isSameDay(parseISO(exp.tarih), day));
             const isSelected = isSameDay(day, selectedDate);
             const isCurrentMonth = isSameMonth(day, monthStart);
@@ -299,6 +343,11 @@ const Defter = () => {
         >
           <Plus size={18} /> Harcama Ekle
         </button>
+        {expenseError && (
+          <div className="mt-3 text-[11px] font-bold text-red-600">
+            Harcamalar yüklenemedi: {expenseError}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -338,8 +387,10 @@ const Defter = () => {
   );
 
   const renderSelectedEvents = () => {
-    const selectedOrgs = data.filter(org => isSameDay(parseISO(org.tarih_saat), selectedDate));
+    const selectedOrgs = data.filter((org) => org._eventDate && isSameDay(org._eventDate, selectedDate));
     const selectedExps = expenses.filter(exp => isSameDay(parseISO(exp.tarih), selectedDate));
+    const paidOrgs = selectedOrgs.filter((org) => org.finans?.[0]?.odeme_durumu === 'Ödendi');
+    const activeOrgs = selectedOrgs.filter((org) => org.finans?.[0]?.odeme_durumu !== 'Ödendi');
 
     return (
       <div className="space-y-4 mb-8">
@@ -350,30 +401,45 @@ const Defter = () => {
           </h3>
           <div className="flex gap-2">
             <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase">
-              {selectedOrgs.length} İş
+              {activeOrgs.length} İş
             </span>
             <span className="bg-red-50 text-red-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase">
               {selectedExps.length} Harcama
             </span>
           </div>
         </div>
+
+        {paidOrgs.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowPaidArchive((v) => !v)}
+            className="text-xs font-bold text-gray-600 hover:text-gray-900"
+          >
+            {showPaidArchive ? 'Önceki İşleri Gizle' : `Önceki İşler (Ödendi) • ${paidOrgs.length}`}
+          </button>
+        )}
         
-        {selectedOrgs.length === 0 && selectedExps.length === 0 ? (
+        {activeOrgs.length === 0 && selectedExps.length === 0 && paidOrgs.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-dashed border-gray-200">
             <p className="text-gray-400 text-sm">Bu tarihte kayıt bulunmuyor.</p>
           </div>
         ) : (
           <>
             {/* İşler */}
-            {selectedOrgs.map(org => (
-              <div key={org.id} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-md transition-all">
+            {activeOrgs.map(org => (
+              <button
+                key={org.id}
+                type="button"
+                onClick={() => navigate(`/duzenle/${org.id}`)}
+                className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-md transition-all"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
                     <FileText size={20} />
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-800 text-sm">{org.musteriler?.ad_soyad || 'İsimsiz'}</h4>
-                    <p className="text-xs text-gray-500">{format(parseISO(org.tarih_saat), 'HH:mm')}</p>
+                    <p className="text-xs text-gray-500">{org._eventDate ? format(org._eventDate, 'HH:mm') : ''}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -382,7 +448,30 @@ const Defter = () => {
                     {org.finans?.[0]?.odeme_durumu || 'Bekliyor'}
                   </p>
                 </div>
-              </div>
+              </button>
+            ))}
+
+            {showPaidArchive && paidOrgs.map((org) => (
+              <button
+                key={org.id}
+                type="button"
+                onClick={() => navigate(`/duzenle/${org.id}`)}
+                className="w-full text-left bg-gray-50 rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-800 text-sm">{org.musteriler?.ad_soyad || 'İsimsiz'}</h4>
+                    <p className="text-xs text-gray-500">{org._eventDate ? format(org._eventDate, 'HH:mm') : ''}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-gray-800 text-sm">{parseFloat(org.finans?.[0]?.toplam_tutar || 0).toLocaleString('tr-TR')} ₺</p>
+                  <p className="text-[10px] font-bold uppercase text-green-600">Ödendi</p>
+                </div>
+              </button>
             ))}
             
             {/* Harcamalar */}
