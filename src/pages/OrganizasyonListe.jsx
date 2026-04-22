@@ -207,7 +207,7 @@ const OrganizasyonListe = () => {
           <div key={org.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">{org.tur}</span>
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">{(org.tur || '').toLowerCase() === 'randevu' ? 'TAÇ EVENT' : org.tur}</span>
                 <h3 className="font-bold text-gray-900 text-lg leading-tight">{org.musteriler?.ad_soyad}</h3>
               </div>
               <div className="text-right bg-indigo-50 p-2 rounded-xl min-w-[70px]">

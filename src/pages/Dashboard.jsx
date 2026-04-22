@@ -110,7 +110,7 @@ const Dashboard = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-gray-900">{org.musteriler?.ad_soyad}</h3>
-                  <p className="text-sm text-gray-500">{org.tur}</p>
+                  <p className="text-sm text-gray-500">{(org.tur || '').toLowerCase() === 'randevu' ? 'TAÇ EVENT' : org.tur}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-indigo-600">

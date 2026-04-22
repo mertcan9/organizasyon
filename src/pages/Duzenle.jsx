@@ -240,7 +240,7 @@ const Duzenle = () => {
       const orgDate = isKinaOnly ? formData.kina_tarih : formData.org_tarih;
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
-      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.org_icerik || 'Organizasyon'));
+      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
 
       const { error: orgError } = await supabase
         .from('organizasyonlar')
@@ -401,7 +401,7 @@ const Duzenle = () => {
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'randevu' }))}
               className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              RANDEVU İÇERİĞİ
+              TAÇ EVENT
             </button>
           </div>
         </div>
@@ -583,7 +583,7 @@ const Duzenle = () => {
             {/* Tekil Sözleşme UI (Düğün, Kına veya Randevu) */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
               <div className="font-bold text-indigo-600 text-center border-b pb-2 text-xl tracking-widest uppercase">
-                {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
+                {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
                  formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 'KINA PAKET İÇERİĞİ'}
               </div>
               
@@ -591,7 +591,7 @@ const Duzenle = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-3">
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ' : 'ETKİNLİK TARİHİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT TARİHİ' : 'ETKİNLİK TARİHİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_tarih' : 'org_tarih'} 
@@ -601,7 +601,7 @@ const Duzenle = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                     />
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ' : 'ETKİNLİK SAATİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT SAATİ' : 'ETKİNLİK SAATİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_saat' : 'org_saat'} 
@@ -784,7 +784,7 @@ const Duzenle = () => {
 
           {/* TITLE */}
           <div style={{ textAlign: 'center', fontSize: '28px', fontWeight: 'bold', margin: '25px 0', borderTop: '2px solid black', borderBottom: '2px solid black', padding: '12px 0', background: '#f5f5f5', textTransform: 'uppercase', color: 'black' }}>
-            {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
+            {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
              formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 
              formData.sozlesme_turu === 'kina' ? 'KINA PAKET İÇERİĞİ' : 'ORGANİZASYON İÇERİĞİ'}
           </div>
@@ -832,7 +832,7 @@ const Duzenle = () => {
           <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 'bold', margin: '30px 0', padding: '15px', border: '2px solid black', background: '#f0f0f0', lineHeight: '1.6', color: 'black' }}>
             SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. KURALLAR KESİN VE NETTİR.<br/>
             MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EK ÜCRET ALINIR.<br/>
-            ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
+            ÖDEMELER TAÇ EVENT GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
           </div>
 
           {/* FINANCE TABLE */}
