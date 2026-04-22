@@ -10,6 +10,12 @@ const YeniKayit = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const pdfRef = useRef();
+  const yetkiliImzaCanvasRef = useRef(null);
+  const musteriImzaCanvasRef = useRef(null);
+  const yetkiliImzaDrawingRef = useRef({ drawing: false, lastX: 0, lastY: 0, pointerId: null });
+  const musteriImzaDrawingRef = useRef({ drawing: false, lastX: 0, lastY: 0, pointerId: null });
+  const [yetkiliImzaDataUrl, setYetkiliImzaDataUrl] = useState('');
+  const [musteriImzaDataUrl, setMusteriImzaDataUrl] = useState('');
 
   const [formData, setFormData] = useState({
     sozlesme_turu: 'standart', // 'standart', 'randevu', 'dugun', 'kina'
@@ -112,6 +118,102 @@ const YeniKayit = () => {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    const initCanvas = (canvas) => {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    };
+
+    initCanvas(yetkiliImzaCanvasRef.current);
+    initCanvas(musteriImzaCanvasRef.current);
+  }, []);
+
+  const getCanvasPoint = (canvas, e) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  };
+
+  const startImza = (which, e) => {
+    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const p = getCanvasPoint(canvas, e);
+    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
+    ref.current.drawing = true;
+    ref.current.lastX = p.x;
+    ref.current.lastY = p.y;
+    ref.current.pointerId = e.pointerId;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch (err) {
+      console.error(err);
+    }
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  const moveImza = (which, e) => {
+    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
+    if (!ref.current.drawing) return;
+    const p = getCanvasPoint(canvas, e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ref.current.lastX = p.x;
+    ref.current.lastY = p.y;
+  };
+
+  const endImza = (which) => {
+    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
+    if (!canvas) return;
+    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
+    if (!ref.current.drawing) return;
+    ref.current.drawing = false;
+    if (ref.current.pointerId !== null) {
+      try {
+        canvas.releasePointerCapture(ref.current.pointerId);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    ref.current.pointerId = null;
+    const url = canvas.toDataURL('image/png');
+    if (which === 'yetkili') setYetkiliImzaDataUrl(url);
+    else setMusteriImzaDataUrl(url);
+  };
+
+  const temizleImza = (which) => {
+    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    if (which === 'yetkili') setYetkiliImzaDataUrl('');
+    else setMusteriImzaDataUrl('');
+  };
+
   const handlePDF = async (e) => {
     if (e) e.preventDefault();
     if (!pdfRef.current) return;
@@ -213,6 +315,27 @@ const YeniKayit = () => {
       const [hh, mm] = (orgTime || '00:00').split(':').map((n) => parseInt(n, 10));
       const tarihSaatIso = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0).toISOString();
 
+      const ekNotlarObj = {
+        sozlesme_turu: formData.sozlesme_turu,
+        gelin_ad_soyad: formData.gelin_ad_soyad,
+        gelin_tel: formData.gelin_tel,
+        yakin_ad_soyad: formData.yakin_ad_soyad,
+        yakin_tel: formData.yakin_tel,
+        kina_tarih: formData.kina_tarih,
+        kina_yer: formData.kina_yer,
+        kina_saat: formData.kina_saat,
+        paket_icerigi: formData.paket_icerigi,
+        kina_paketi: formData.kina_paketi,
+        randevu_icerigi: formData.randevu_icerigi,
+        ikramliklar: formData.ikramliklar,
+        personel_ad: formData.personel_ad,
+        personel_ucret: formData.personel_ucret,
+        ek_istekler: formData.ek_notlar,
+        kina_ek_istekler: formData.kina_ek_istekler,
+        _tz_fixed: true,
+        _is_complex: true
+      };
+
       const { data: orgData, error: orgError } = await supabase
         .from('organizasyonlar')
         .insert([{
@@ -220,26 +343,7 @@ const YeniKayit = () => {
           tur: orgType,
           tarih_saat: tarihSaatIso,
           mekan_adi: orgPlace,
-          ek_notlar: JSON.stringify({
-              sozlesme_turu: formData.sozlesme_turu,
-              gelin_ad_soyad: formData.gelin_ad_soyad,
-              gelin_tel: formData.gelin_tel,
-              yakin_ad_soyad: formData.yakin_ad_soyad,
-              yakin_tel: formData.yakin_tel,
-              kina_tarih: formData.kina_tarih,
-              kina_yer: formData.kina_yer,
-              kina_saat: formData.kina_saat,
-              paket_icerigi: formData.paket_icerigi,
-              kina_paketi: formData.kina_paketi,
-              randevu_icerigi: formData.randevu_icerigi,
-              ikramliklar: formData.ikramliklar,
-              personel_ad: formData.personel_ad,
-              personel_ucret: formData.personel_ucret,
-              ek_istekler: formData.ek_notlar, 
-              kina_ek_istekler: formData.kina_ek_istekler,
-              _tz_fixed: true,
-              _is_complex: true
-            })
+          ek_notlar: JSON.stringify(ekNotlarObj)
         }])
         .select()
         .single();
@@ -294,6 +398,44 @@ const YeniKayit = () => {
           } else {
             alert(`${expError.message || 'Personel ödemesi Defter\'e eklenemedi.'}${expError.code ? ` (code: ${expError.code})` : ''}`);
           }
+        }
+      }
+
+      const uploadSignature = async (key, dataUrl) => {
+        if (!dataUrl) return null;
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png';
+        const path = `${orgData.id}/${key}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('imzalar')
+          .upload(path, blob, { upsert: true, contentType: blob.type });
+        if (upErr) throw upErr;
+        const { data } = supabase.storage.from('imzalar').getPublicUrl(path);
+        return data?.publicUrl || null;
+      };
+
+      let yetkiliUrl = null;
+      let musteriUrl = null;
+      try {
+        yetkiliUrl = await uploadSignature('yetkili', yetkiliImzaDataUrl);
+        musteriUrl = await uploadSignature('musteri', musteriImzaDataUrl);
+      } catch (sigErr) {
+        alert(sigErr?.message ? `İmza kaydedilemedi: ${sigErr.message}` : 'İmza kaydedilemedi.');
+      }
+
+      if (yetkiliUrl || musteriUrl) {
+        const updatedNotes = {
+          ...ekNotlarObj,
+          imza_yetkili_url: yetkiliUrl || undefined,
+          imza_musteri_url: musteriUrl || undefined
+        };
+        const { error: notesErr } = await supabase
+          .from('organizasyonlar')
+          .update({ ek_notlar: JSON.stringify(updatedNotes) })
+          .eq('id', orgData.id);
+        if (notesErr) {
+          alert(notesErr?.message ? `İmza bilgisi kayda işlenemedi: ${notesErr.message}` : 'İmza bilgisi kayda işlenemedi.');
         }
       }
 
@@ -784,6 +926,55 @@ const YeniKayit = () => {
             </div>
           </>
         )}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="font-bold text-sm text-gray-600 mb-4 uppercase tracking-wider">İmzalar</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
+                {formData.sozlesme_turu === 'randevu' ? 'Randevuyu Alan Yetkili' : 'Sözleşmeyi Alan Yetkili'}
+              </div>
+              <div className="w-full h-32 rounded-xl border border-gray-300 overflow-hidden bg-white">
+                <canvas
+                  ref={yetkiliImzaCanvasRef}
+                  className="w-full h-full touch-none"
+                  onPointerDown={(e) => startImza('yetkili', e)}
+                  onPointerMove={(e) => moveImza('yetkili', e)}
+                  onPointerUp={(e) => endImza('yetkili', e)}
+                  onPointerCancel={(e) => endImza('yetkili', e)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => temizleImza('yetkili')}
+                className="mt-2 text-xs font-bold text-gray-600 hover:text-gray-900"
+              >
+                Temizle
+              </button>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
+                {formData.sozlesme_turu === 'randevu' ? 'Düğün Sahibi Yetkili' : 'Müşteri Yetkili'}
+              </div>
+              <div className="w-full h-32 rounded-xl border border-gray-300 overflow-hidden bg-white">
+                <canvas
+                  ref={musteriImzaCanvasRef}
+                  className="w-full h-full touch-none"
+                  onPointerDown={(e) => startImza('musteri', e)}
+                  onPointerMove={(e) => moveImza('musteri', e)}
+                  onPointerUp={(e) => endImza('musteri', e)}
+                  onPointerCancel={(e) => endImza('musteri', e)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => temizleImza('musteri')}
+                className="mt-2 text-xs font-bold text-gray-600 hover:text-gray-900"
+              >
+                Temizle
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
 
       {/* Görünmez PDF Alanı */}
@@ -952,13 +1143,23 @@ const YeniKayit = () => {
                     <>
                       RANDEVUYU ALAN YETKİLİ<br/><br/>
                       İSİM SOYİSİM : ........................................<br/><br/>
-                      İMZA : ........................................
+                      İMZA : {yetkiliImzaDataUrl ? '' : '........................................'}
+                      {yetkiliImzaDataUrl && (
+                        <div style={{ marginTop: '10px' }}>
+                          <img src={yetkiliImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
                       SÖZLEŞMEYİ ALAN YETKİLİ<br/><br/>
                       İSİM SOYİSİM:<br/><br/>
-                      İMZA
+                      İMZA{yetkiliImzaDataUrl ? '' : ''}
+                      {yetkiliImzaDataUrl && (
+                        <div style={{ marginTop: '10px' }}>
+                          <img src={yetkiliImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
+                        </div>
+                      )}
                     </>
                   )}
                 </td>
@@ -968,13 +1169,23 @@ const YeniKayit = () => {
                     <>
                       DÜĞÜN SAHİBİ YETKİLİ<br/><br/>
                       İSİM SOYİSİM : ........................................<br/><br/>
-                      İMZA : ........................................
+                      İMZA : {musteriImzaDataUrl ? '' : '........................................'}
+                      {musteriImzaDataUrl && (
+                        <div style={{ marginTop: '10px' }}>
+                          <img src={musteriImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
                       MÜŞTERİ YETKİLİ<br/><br/>
                       İSİM SOYİSİM:<br/><br/>
-                      İMZA
+                      İMZA{musteriImzaDataUrl ? '' : ''}
+                      {musteriImzaDataUrl && (
+                        <div style={{ marginTop: '10px' }}>
+                          <img src={musteriImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
+                        </div>
+                      )}
                     </>
                   )}
                 </td>
