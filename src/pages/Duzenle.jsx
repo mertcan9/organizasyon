@@ -195,10 +195,24 @@ const Duzenle = () => {
         left: 0 !important; 
         top: 0 !important; 
         width: 210mm !important; 
+        height: auto !important;
+        overflow: visible !important;
         z-index: 9999 !important; 
         background: white !important;
         visibility: visible !important;
       `;
+
+      const sourceFields = element.querySelectorAll('input, textarea, select');
+      const targetFields = clone.querySelectorAll('input, textarea, select');
+      for (let i = 0; i < sourceFields.length && i < targetFields.length; i += 1) {
+        const source = sourceFields[i];
+        const target = targetFields[i];
+        if (source instanceof HTMLInputElement || source instanceof HTMLTextAreaElement) {
+          target.value = source.value;
+        } else if (source instanceof HTMLSelectElement) {
+          target.value = source.value;
+        }
+      }
 
       document.body.appendChild(clone);
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -211,12 +225,30 @@ const Duzenle = () => {
         width: clone.scrollWidth,
         height: clone.scrollHeight,
         windowWidth: clone.scrollWidth,
-        windowHeight: clone.scrollHeight
+        windowHeight: clone.scrollHeight,
+        scrollX: 0,
+        scrollY: 0
       });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0.5) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
     } catch (error) {
       console.error('PDF Error:', error);
