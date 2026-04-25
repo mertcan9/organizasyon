@@ -1,17 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useParams } from 'react-router-dom';
 import { User, Tag, CreditCard, ArrowLeft, FileText, Check } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { format, parseISO } from 'date-fns';
 
 const Duzenle = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [markingPaid, setMarkingPaid] = useState(false);
   const pdfRef = useRef();
 
   const [formData, setFormData] = useState({
@@ -136,27 +134,12 @@ const Duzenle = () => {
         } else {
           cleanNotes = data.ek_notlar || '';
         }
-      } catch {
+      } catch (e) {
         cleanNotes = data.ek_notlar || '';
       }
 
-      const tzFixed = complexData?._tz_fixed === true;
-      const rawDt = data.tarih_saat ? parseISO(data.tarih_saat) : null;
-      const orgDt = rawDt
-        ? tzFixed
-          ? rawDt
-          : new Date(
-              rawDt.getUTCFullYear(),
-              rawDt.getUTCMonth(),
-              rawDt.getUTCDate(),
-              rawDt.getUTCHours(),
-              rawDt.getUTCMinutes(),
-              rawDt.getUTCSeconds(),
-              rawDt.getUTCMilliseconds()
-            )
-        : null;
-      const org_tarih = orgDt ? format(orgDt, 'yyyy-MM-dd') : '';
-      const org_saat = orgDt ? format(orgDt, 'HH:mm') : '';
+      const org_tarih = data.tarih_saat ? data.tarih_saat.split('T')[0] : '';
+      const org_saat = data.tarih_saat ? data.tarih_saat.split('T')[1]?.slice(0, 5) : '';
 
       setFormData({
         sozlesme_turu: complexData.sozlesme_turu || 'standart',
@@ -201,41 +184,45 @@ const Duzenle = () => {
     if (e) e.preventDefault();
     if (!pdfRef.current) return;
     setSaving(true);
+    let clone;
     
     try {
       const element = pdfRef.current;
-      
-      const canvas = await html2canvas(element, {
-        scale: 3,
+      clone = element.cloneNode(true);
+      clone.style.cssText = `
+        display: block !important; 
+        position: fixed !important; 
+        left: 0 !important; 
+        top: 0 !important; 
+        width: 210mm !important; 
+        z-index: 9999 !important; 
+        background: white !important;
+        visibility: visible !important;
+      `;
+
+      document.body.appendChild(clone);
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const canvas = await html2canvas(clone, {
+        scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: 794,
-        windowWidth: 794,
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('pdf-content');
-          if (clonedElement) {
-            clonedElement.style.position = 'static';
-            clonedElement.style.left = '0';
-            clonedElement.style.top = '0';
-            clonedElement.style.visibility = 'visible';
-          }
-        }
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
-      
     } catch (error) {
       console.error('PDF Error:', error);
       alert('PDF oluşturulamadı.');
     } finally {
+      if (clone && clone.parentNode) clone.parentNode.removeChild(clone);
       setSaving(false);
     }
   };
@@ -257,16 +244,13 @@ const Duzenle = () => {
       const orgDate = isKinaOnly ? formData.kina_tarih : formData.org_tarih;
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
-      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
-      const [y, m, d] = (orgDate || '').split('-').map((n) => parseInt(n, 10));
-      const [hh, mm] = (orgTime || '00:00').split(':').map((n) => parseInt(n, 10));
-      const tarihSaatIso = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0).toISOString();
+      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.org_icerik || 'Organizasyon'));
 
       const { error: orgError } = await supabase
         .from('organizasyonlar')
         .update({
           tur: orgType,
-          tarih_saat: tarihSaatIso,
+          tarih_saat: `${orgDate}T${orgTime || '00:00'}`,
           mekan_adi: orgPlace,
           ek_notlar: JSON.stringify({
             sozlesme_turu: formData.sozlesme_turu,
@@ -286,7 +270,6 @@ const Duzenle = () => {
             kina_toplam_ucret: formData.kina_toplam_ucret,
             kina_kapora: formData.kina_kapora,
             kina_kalan: formData.kina_kalan,
-            _tz_fixed: true,
             _is_complex: true
           })
         })
@@ -294,22 +277,8 @@ const Duzenle = () => {
 
       if (orgError) throw orgError;
 
-      const isStandart = formData.sozlesme_turu === 'standart';
-      
-      let total = 0;
-      let kaparo = 0;
-      
-      if (isStandart) {
-        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
-        kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
-      } else if (isKinaOnly) {
-        total = parseFloat(formData.kina_toplam_ucret) || 0;
-        kaparo = parseFloat(formData.kina_kapora) || 0;
-      } else {
-        total = parseFloat(formData.toplam_ucret) || 0;
-        kaparo = parseFloat(formData.kapora) || 0;
-      }
-
+      const total = (parseFloat(isKinaOnly ? formData.kina_toplam_ucret : formData.toplam_ucret) || 0);
+      const kaparo = (parseFloat(isKinaOnly ? formData.kina_kapora : formData.kapora) || 0);
       const odeme_durumu = kaparo >= total ? 'Ödendi' : (kaparo > 0 ? 'Kısmi' : 'Ödenmedi');
 
       const { error: financeError } = await supabase
@@ -333,86 +302,15 @@ const Duzenle = () => {
     }
   };
 
-  const handleMarkPaid = async () => {
-    if (!formData.finans_id) return;
-    if (!window.confirm('Ödeme alındı olarak işaretlensin mi?')) return;
-    if (markingPaid) return;
-    setMarkingPaid(true);
-
-    try {
-      const isKinaOnly = formData.sozlesme_turu === 'kina';
-      const isStandart = formData.sozlesme_turu === 'standart';
-
-      let total = 0;
-      if (isStandart) {
-        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
-      } else if (isKinaOnly) {
-        total = parseFloat(formData.kina_toplam_ucret) || 0;
-      } else {
-        total = parseFloat(formData.toplam_ucret) || 0;
-      }
-
-      const { error } = await supabase
-        .from('finans')
-        .update({
-          alinan_kaparo: total,
-          odeme_durumu: 'Ödendi'
-        })
-        .eq('id', formData.finans_id);
-
-      if (error) throw error;
-
-      setFormData((prev) => {
-        if (isStandart) {
-          const orgTotal = parseFloat(prev.toplam_ucret) || 0;
-          const kinaTotal = parseFloat(prev.kina_toplam_ucret) || 0;
-          return {
-            ...prev,
-            kapora: String(orgTotal),
-            kalan: '0',
-            kina_kapora: String(kinaTotal),
-            kina_kalan: '0'
-          };
-        }
-        if (isKinaOnly) {
-          return {
-            ...prev,
-            kina_kapora: String(total),
-            kina_kalan: '0'
-          };
-        }
-        return {
-          ...prev,
-          kapora: String(total),
-          kalan: '0'
-        };
-      });
-    } catch (error) {
-      alert(error?.message ? `Ödeme işaretlenemedi: ${error.message}` : 'Ödeme işaretlenemedi.');
-    } finally {
-      setMarkingPaid(false);
-    }
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
-      
-      // Organizasyon kalan hesaplama
       if (name === 'toplam_ucret' || name === 'kapora') {
         const t = parseFloat(newData.toplam_ucret) || 0;
         const k = parseFloat(newData.kapora) || 0;
         newData.kalan = (t - k).toString();
       }
-      
-      // Kına kalan hesaplama
-      if (name === 'kina_toplam_ucret' || name === 'kina_kapora') {
-        const t = parseFloat(newData.kina_toplam_ucret) || 0;
-        const k = parseFloat(newData.kina_kapora) || 0;
-        newData.kina_kalan = (t - k).toString();
-      }
-      
       return newData;
     });
   };
@@ -456,34 +354,34 @@ const Duzenle = () => {
             </button>
             <h2 className="text-xl font-bold text-gray-800">Kaydı Düzenle</h2>
           </div>
-          <div className="flex bg-gray-100 p-1.5 rounded-xl overflow-x-auto no-scrollbar w-full md:w-fit whitespace-nowrap gap-1">
+          <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto no-scrollbar w-full md:w-fit whitespace-nowrap">
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'standart' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               STANDART (DÜĞÜN/KINA)
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'dugun' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               DÜĞÜN SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'kina' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               KINA SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'randevu' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              TAÇ EVENT
+              RANDEVU İÇERİĞİ
             </button>
           </div>
         </div>
@@ -658,21 +556,6 @@ const Duzenle = () => {
                   <div className="text-2xl font-black text-pink-600">{formData.kina_kalan || '0'} ₺</div>
                 </div>
               </div>
-              <div className="md:col-span-2">
-                <button
-                  type="button"
-                  onClick={handleMarkPaid}
-                  disabled={
-                    markingPaid ||
-                    !formData.finans_id ||
-                    ((parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0)) >=
-                      ((parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0))
-                  }
-                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-green-700 disabled:opacity-50"
-                >
-                  {markingPaid ? 'İşleniyor...' : 'Ödeme Alındı'}
-                </button>
-              </div>
             </div>
           </>
         ) : (
@@ -680,7 +563,7 @@ const Duzenle = () => {
             {/* Tekil Sözleşme UI (Düğün, Kına veya Randevu) */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
               <div className="font-bold text-indigo-600 text-center border-b pb-2 text-xl tracking-widest uppercase">
-                {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
+                {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
                  formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 'KINA PAKET İÇERİĞİ'}
               </div>
               
@@ -688,7 +571,7 @@ const Duzenle = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-3">
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT TARİHİ' : 'ETKİNLİK TARİHİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ' : 'ETKİNLİK TARİHİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_tarih' : 'org_tarih'} 
@@ -698,7 +581,7 @@ const Duzenle = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                     />
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT SAATİ' : 'ETKİNLİK SAATİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ' : 'ETKİNLİK SAATİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_saat' : 'org_saat'} 
@@ -817,175 +700,268 @@ const Duzenle = () => {
                   </div>
                 </div>
               </div>
-              <div className="border-t pt-6">
-                <button
-                  type="button"
-                  onClick={handleMarkPaid}
-                  disabled={
-                    markingPaid ||
-                    !formData.finans_id ||
-                    (formData.sozlesme_turu === 'kina'
-                      ? (parseFloat(formData.kina_kapora) || 0) >= (parseFloat(formData.kina_toplam_ucret) || 0)
-                      : (parseFloat(formData.kapora) || 0) >= (parseFloat(formData.toplam_ucret) || 0))
-                  }
-                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-green-700 disabled:opacity-50"
-                >
-                  {markingPaid ? 'İşleniyor...' : 'Ödeme Alındı'}
-                </button>
-              </div>
             </div>
           </>
         )}
       </form>
 
       {/* Görünmez PDF Alanı */}
-      <div style={{ position: 'fixed', left: '-20000px', top: 0, width: '210mm', zIndex: -9999 }}>
-        <div ref={pdfRef} id="pdf-content" style={{ width: '210mm', padding: '15mm', background: 'white', color: 'black', boxSizing: 'border-box', fontFamily: "'Times New Roman', serif" }}>
-          
-          {/* HEADER */}
-          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
-            <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>TAÇ ORGANİZASYON</h1>
-            <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>Profesyonel Organizasyon Hizmetleri</p>
-          </div>
-
-          {/* CUSTOMER INFO TABLE - REAL HTML TABLE FOR STABILITY */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <tbody>
-              {[
-                { label: 'DAMADIN ADI SOYADI:', val: formData.damat_ad_soyad, tel: formData.damat_tel },
-                { label: 'GELİNİN ADI SOYADI:', val: formData.gelin_ad_soyad, tel: formData.gelin_tel },
-                { label: 'YAKINININ ADI SOYADI:', val: formData.yakin_ad_soyad, tel: formData.yakin_tel }
-              ].map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid black' }}>
-                   <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '180px', verticalAlign: 'middle' }}>{row.label}</td>
-                   <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>{row.val || '.....................................'}</td>
-                   <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '40px', textAlign: 'right', verticalAlign: 'middle' }}>TEL:</td>
-                   <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', textAlign: 'right', verticalAlign: 'middle' }}>{row.tel || '.....................'}</td>
-                 </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* DATE & TIME TABLE */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
-            <tbody>
-              <tr>
-                 <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                   <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>TARİH:</span>
-                   <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{formatDate(formData.sozlesme_turu === 'kina' ? formData.kina_tarih : formData.org_tarih)}</span>
-                 </td>
-                 <td style={{ width: '4%' }}></td>
-                 <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                   <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>SAAT:</span>
-                   <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{formatTime(formData.sozlesme_turu === 'kina' ? formData.kina_saat : formData.org_saat)}</span>
-                 </td>
-               </tr>
-            </tbody>
-          </table>
-
-          {/* VENUE ROW */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <tbody>
-              <tr style={{ borderBottom: '1px solid black' }}>
-                 <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', verticalAlign: 'middle' }}>ETKİNLİK YERİ:</td>
-                 <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>
-                   {(formData.sozlesme_turu === 'kina' ? formData.kina_yer : formData.org_yer) || '..........................................................................................'}
-                 </td>
-               </tr>
-            </tbody>
-          </table>
-
-          {/* TITLE */}
-          <div style={{ textAlign: 'center', fontSize: '28px', fontWeight: 'bold', margin: '25px 0', borderTop: '2px solid black', borderBottom: '2px solid black', padding: '12px 0', background: '#f5f5f5', textTransform: 'uppercase', color: 'black' }}>
-            {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
-             formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 
-             formData.sozlesme_turu === 'kina' ? 'KINA PAKET İÇERİĞİ' : 'ORGANİZASYON İÇERİĞİ'}
-          </div>
-
-          {/* ITEMS LIST - USING FLOAT FOR BETTER PDF RENDERING */}
-          <div style={{ overflow: 'hidden', margin: '15px 0', clear: 'both' }}>
-            {(formData.sozlesme_turu === 'randevu' ? formData.randevu_icerigi : 
-              formData.sozlesme_turu === 'dugun' ? formData.paket_icerigi : 
-              formData.sozlesme_turu === 'kina' ? formData.kina_paketi : 
-              [...formData.paket_icerigi, ...formData.kina_paketi]).map((item, idx) => (
-              <div key={idx} style={{ width: '48%', float: 'left', height: '35px', marginBottom: '5px', clear: idx % 2 === 0 ? 'left' : 'none' }}>
-                <div style={{ width: '22px', height: '22px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '20px', marginRight: '10px', fontWeight: 'bold', fontSize: '18px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? '✓' : ''}
-                </div>
-                <span style={{ fontSize: '15px', fontWeight: 'bold', verticalAlign: 'middle', display: 'inline-block' }}>{item.ad}</span>
-                {item.sayi && <span style={{ marginLeft: '5px', fontSize: '13px', verticalAlign: 'middle' }}>({item.sayi})</span>}
+      <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={pdfRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
+          {formData.sozlesme_turu === 'standart' ? (
+            <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
+              {/* Logo ve Başlık */}
+              <div className="text-center mb-10">
+                <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
+                <div className="text-xl italic font-serif">Organizasyon</div>
               </div>
-            ))}
-            <div style={{ clear: 'both' }}></div>
-          </div>
 
-          {/* REFRESHMENTS */}
-          <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', margin: '15px 0', borderTop: '1px solid black', borderBottom: '1px solid black', padding: '8px 0', background: '#f5f5f5', color: 'black' }}>İKRAMLIKLAR</div>
-          <div style={{ overflow: 'hidden', marginBottom: '15px', clear: 'both' }}>
-            {formData.ikramliklar.map((item, idx) => (
-              <div key={idx} style={{ width: '25%', float: 'left', height: '35px' }}>
-                <div style={{ width: '20px', height: '20px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '18px', marginRight: '8px', fontWeight: 'bold', fontSize: '16px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? '✓' : ''}
+              {/* Üst Bilgiler */}
+              <div className="space-y-3 mb-8 text-[13px]">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.damat_tel || '...........................................'}</span>
                 </div>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', verticalAlign: 'middle' }}>{item.ad}</span>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.gelin_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.yakin_tel || '...........................................'}</span>
+                </div>
               </div>
-            ))}
-            <div style={{ clear: 'both' }}></div>
-          </div>
 
-          {/* EXTRA REQUESTS */}
-          <div style={{ marginTop: '15px', clear: 'both' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px', color: 'black' }}>EKSTRA İSTEKLER:</div>
-            <div style={{ border: '2px solid black', padding: '12px', minHeight: '120px', fontSize: '15px', fontWeight: 'bold', lineHeight: '1.6', color: 'black' }}>
-              {formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_istekler}
+              <div className="grid grid-cols-2 gap-12 text-[12px] mb-8">
+                <div className="space-y-2">
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON İÇERİĞİ :</span><span className="font-semibold">{formData.org_icerik || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON TARİHİ :</span><span className="font-semibold">{formatDate(formData.org_tarih)}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON YERİ :</span><span className="font-semibold">{formData.org_yer || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON SAATİ :</span><span className="font-semibold">{formatTime(formData.org_saat)}</span></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA TARİHİ :</span><span className="font-semibold">{formatDate(formData.kina_tarih)}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA YERİ :</span><span className="font-semibold">{formData.kina_yer || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA SAATİ :</span><span className="font-semibold">{formatTime(formData.kina_saat)}</span></div>
+                </div>
+              </div>
+
+              {/* Dikey Çizgi Ayırıcı */}
+              <div className="grid grid-cols-2 gap-12 relative">
+                <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-black -translate-x-1/2"></div>
+                
+                {/* Paket İçeriği Sol */}
+                <div className="pr-6">
+                  <div className="text-center font-bold text-xl mb-6 tracking-widest">PAKET İÇERİĞİ</div>
+                  <div className="space-y-1.5">
+                    {formData.paket_icerigi.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-[11px]">
+                        <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
+                          {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                        </div>
+                        <span className="flex-1 font-bold uppercase">{item.ad}</span>
+                        {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                      {formData.ek_istekler}
+                    </div>
+                  </div>
+                  <div className="mt-8 space-y-2 text-[12px]">
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.toplam_ucret || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kapora || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kalan || '................'} ₺</span></div>
+                  </div>
+                </div>
+
+                {/* Kına Paketi Sağ */}
+                <div className="pl-6">
+                  <div className="text-center font-bold text-xl mb-6 tracking-widest">KINA PAKETİ</div>
+                  <div className="space-y-1.5">
+                    {formData.kina_paketi.map((item, idx) => (
+                      <div key={idx} className="flex flex-col">
+                        <div className="flex items-center gap-3 text-[11px]">
+                          <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
+                            {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                          </div>
+                          <span className="flex-1 font-bold uppercase">{item.ad}</span>
+                          {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
+                        </div>
+                        {item.detay && (
+                          <div className="ml-7 text-[9px] font-medium leading-tight mt-0.5">
+                            {item.detay.split(', ').map((d, i) => (
+                              <span key={i} className="mr-2">. {d}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                      {formData.kina_ek_istekler}
+                    </div>
+                  </div>
+                  <div className="mt-8 space-y-2 text-[12px]">
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.kina_toplam_ucret || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kina_kapora || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kina_kalan || '................'} ₺</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* İkramlıklar (Standart) */}
+              <div className="mt-6 border-t border-black pt-4">
+                <div className="font-bold text-[11px] mb-2 uppercase">İKRAMLIKLAR;</div>
+                <div className="flex gap-8 ml-2">
+                  {formData.ikramliklar.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-[11px]">
+                      <span className="font-bold">{item.ad}</span>
+                      <div className="w-4 h-4 border border-black flex items-center justify-center">
+                        {item.secili && <Check size={12} className="stroke-[3px]" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-10 text-center text-[12px] font-black bg-gray-200 py-2 border-2 border-black">
+                ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR
+              </div>
+
+              <div className="mt-12 grid grid-cols-2 gap-24 text-[11px]">
+                <div className="space-y-6">
+                  <div className="font-bold text-sm">SÖZLEŞMEYİ ALAN YETKİLİ</div>
+                  <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-sm">İMZA</div>
+                </div>
+                <div className="space-y-6">
+                  <div className="font-bold text-sm">MÜŞTERİ YETKİLİ</div>
+                  <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-sm">İMZA</div>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
+              {/* Tekil Sözleşme Şablonu (Randevu, Düğün veya Kına) */}
+              <div className="space-y-3 mb-6 text-[13px]">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.damat_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.gelin_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.yakin_tel || '...........................................'}</span>
+                </div>
+              </div>
 
-          {/* FOOTER RULES */}
-          <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 'bold', margin: '30px 0', padding: '15px', border: '2px solid black', background: '#f0f0f0', lineHeight: '1.6', color: 'black' }}>
-            SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. KURALLAR KESİN VE NETTİR.<br/>
-            MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EK ÜCRET ALINIR.<br/>
-            ÖDEMELER TAÇ EVENT GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
-          </div>
+              <div className="grid grid-cols-2 gap-12 text-[12px] mb-6">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-48 font-bold uppercase">
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ :' : 'ETKİNLİK TARİHİ :'}
+                  </span>
+                  <span className="font-semibold">
+                    {formatDate(formData.sozlesme_turu === 'kina' ? formData.kina_tarih : formData.org_tarih)}
+                  </span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-48 font-bold uppercase">
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ :' : 'ETKİNLİK SAATİ :'}
+                  </span>
+                  <span className="font-semibold">
+                    {formatTime(formData.sozlesme_turu === 'kina' ? formData.kina_saat : formData.org_saat)}
+                  </span>
+                </div>
+              </div>
 
-          {/* FINANCE TABLE */}
-          <div style={{ width: '50%', float: 'right', marginTop: '20px', clear: 'both' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {[
-                  { label: 'TOPLAM ÜCRET:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || '0' },
-                  { label: 'KAPORA:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || '0' },
-                  { label: 'KALAN:', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || '0', isLast: true }
-                ].map((row, i) => (
-                  <tr key={i} style={{ borderBottom: row.isLast ? '4px solid black' : '2px solid black' }}>
-                    <td style={{ padding: '10px 0', fontWeight: 'bold', fontSize: '17px', color: 'black' }}>{row.label}</td>
-                    <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 'bold', fontSize: row.isLast ? '24px' : '17px', color: 'black' }}>{row.val} ₺</td>
-                  </tr>
+              <div className="text-center font-bold text-4xl mb-8 tracking-[0.3em] uppercase">
+                {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
+                 formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 'KINA PAKET İÇERİĞİ'}
+              </div>
+
+              <div className="space-y-3 mb-10 ml-4">
+                {(formData.sozlesme_turu === 'randevu' ? formData.randevu_icerigi : 
+                  formData.sozlesme_turu === 'dugun' ? formData.paket_icerigi : formData.kina_paketi).map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-4 text-[16px]">
+                    <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
+                      {item.secili && <Check size={20} className="stroke-[4px]" />}
+                    </div>
+                    <span className="font-bold uppercase tracking-wide">{item.ad}</span>
+                    {item.sayi !== undefined && <span className="text-[12px] font-semibold italic">( {item.sayi || '....'} adet )</span>}
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ clear: 'both' }}></div>
+              </div>
 
-          {/* SIGNATURE AREA */}
-          <table style={{ width: '100%', marginTop: '60px', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  SÖZLEŞMEYİ ALAN YETKİLİ<br/><br/>
-                  İSİM SOYİSİM:<br/><br/>
-                  İMZA
-                </td>
-                <td style={{ width: '10%' }}></td>
-                <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  MÜŞTERİ YETKİLİ<br/><br/>
-                  İSİM SOYİSİM:<br/><br/>
-                  İMZA
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              <div className="mb-8">
+                <div className="font-bold text-[14px] mb-4 uppercase">İKRAMLIKLAR;</div>
+                <div className="flex gap-12 ml-4">
+                  {formData.ikramliklar.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-[14px]">
+                      <span className="font-bold">{item.ad}</span>
+                      <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
+                        {item.secili && <Check size={18} className="stroke-[4px]" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
+              <div className="mb-10">
+                <div className="font-bold text-[14px] mb-2 uppercase">EXTRA İSTEKLER :</div>
+                <div className="min-h-[100px] border-b-2 border-black border-dotted font-semibold text-[14px] py-1 whitespace-pre-wrap leading-relaxed">
+                  {formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_istekler}
+                </div>
+              </div>
+
+              <div className="text-center space-y-2 mb-10">
+                <p className="text-[12px] font-bold">SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN.</p>
+                <p className="text-[12px] font-bold">PAKET İÇERİĞİ KURALLARI KESİN VE NETTİR.</p>
+                <p className="text-[12px] font-bold">MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI</p>
+                <p className="text-[12px] font-bold">DURUMUNDA EXTRA MEKAN VE HİZMET ÜCRETİ TALEP EDİLECEKTİR</p>
+                <p className="text-[12px] font-bold">ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 text-[16px] w-1/2 mb-12">
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">TOPLAM ÜCRET :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || '................'} ₺</span></div>
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">KAPORA :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || '................'} ₺</span></div>
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">KALAN :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || '................'} ₺</span></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-24 text-[13px]">
+                <div className="space-y-8">
+                  <div className="font-bold text-base uppercase">SÖZLEŞMEYİ ALAN YETKİLİ</div>
+                  <div className="border-b-2 border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-base">İMZA</div>
+                </div>
+                <div className="space-y-8">
+                  <div className="font-bold text-base uppercase">MÜŞTERİ YETKİLİ</div>
+                  <div className="border-b-2 border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-base">İMZA</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

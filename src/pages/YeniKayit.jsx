@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Tag, CreditCard, FileText, Check } from 'lucide-react';
@@ -10,12 +10,6 @@ const YeniKayit = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const pdfRef = useRef();
-  const yetkiliImzaCanvasRef = useRef(null);
-  const musteriImzaCanvasRef = useRef(null);
-  const yetkiliImzaDrawingRef = useRef({ drawing: false, lastX: 0, lastY: 0, pointerId: null });
-  const musteriImzaDrawingRef = useRef({ drawing: false, lastX: 0, lastY: 0, pointerId: null });
-  const [yetkiliImzaDataUrl, setYetkiliImzaDataUrl] = useState('');
-  const [musteriImzaDataUrl, setMusteriImzaDataUrl] = useState('');
 
   const [formData, setFormData] = useState({
     sozlesme_turu: 'standart', // 'standart', 'randevu', 'dugun', 'kina'
@@ -48,8 +42,6 @@ const YeniKayit = () => {
       { ad: 'MEYVE SUYU', secili: false },
       { ad: 'SU', secili: false },
     ],
-    personel_ad: '',
-    personel_ucret: '',
     kina_tarih: '',
     kina_yer: '',
     kina_saat: '',
@@ -118,171 +110,49 @@ const YeniKayit = () => {
     }
   }, [location.search]);
 
-  useEffect(() => {
-    const initCanvas = (canvas) => {
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 2;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, rect.width, rect.height);
-    };
-
-    initCanvas(yetkiliImzaCanvasRef.current);
-    initCanvas(musteriImzaCanvasRef.current);
-  }, []);
-
-  const getCanvasPoint = (canvas, e) => {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-  };
-
-  const startImza = (which, e) => {
-    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const p = getCanvasPoint(canvas, e);
-    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
-    ref.current.drawing = true;
-    ref.current.lastX = p.x;
-    ref.current.lastY = p.y;
-    ref.current.pointerId = e.pointerId;
-    try {
-      canvas.setPointerCapture(e.pointerId);
-    } catch (err) {
-      console.error(err);
-    }
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-  };
-
-  const moveImza = (which, e) => {
-    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
-    if (!ref.current.drawing) return;
-    const p = getCanvasPoint(canvas, e);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    ref.current.lastX = p.x;
-    ref.current.lastY = p.y;
-  };
-
-  const endImza = (which) => {
-    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
-    if (!canvas) return;
-    const ref = which === 'yetkili' ? yetkiliImzaDrawingRef : musteriImzaDrawingRef;
-    if (!ref.current.drawing) return;
-    ref.current.drawing = false;
-    if (ref.current.pointerId !== null) {
-      try {
-        canvas.releasePointerCapture(ref.current.pointerId);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    ref.current.pointerId = null;
-    const url = canvas.toDataURL('image/png');
-    if (which === 'yetkili') setYetkiliImzaDataUrl(url);
-    else setMusteriImzaDataUrl(url);
-  };
-
-  const temizleImza = (which) => {
-    const canvas = which === 'yetkili' ? yetkiliImzaCanvasRef.current : musteriImzaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    if (which === 'yetkili') setYetkiliImzaDataUrl('');
-    else setMusteriImzaDataUrl('');
-  };
-
   const handlePDF = async (e) => {
     if (e) e.preventDefault();
     if (!pdfRef.current) return;
     setLoading(true);
+    let clone;
     
     try {
       const element = pdfRef.current;
-      const captureWidth = element.scrollWidth || 794;
-      const captureHeight = element.scrollHeight || 1123;
-      
-      // Capturing directly from the DOM (element is fixed and hidden from view)
-      const canvas = await html2canvas(element, {
-        scale: 3, // Higher scale for better quality
+      clone = element.cloneNode(true);
+      clone.style.cssText = `
+        display: block !important; 
+        position: fixed !important; 
+        left: 0 !important; 
+        top: 0 !important; 
+        width: 210mm !important; 
+        z-index: 9999 !important; 
+        background: white !important;
+        visibility: visible !important;
+      `;
+
+      document.body.appendChild(clone);
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const canvas = await html2canvas(clone, {
+        scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: captureWidth, // Standard A4 width at 96 DPI
-        height: captureHeight,
-        windowWidth: captureWidth,
-        windowHeight: captureHeight,
-        scrollX: 0,
-        scrollY: 0,
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('pdf-content');
-          if (clonedElement) {
-            const wrapper = clonedElement.parentElement;
-            if (wrapper) {
-              wrapper.style.position = 'static';
-              wrapper.style.left = '0';
-              wrapper.style.top = '0';
-              wrapper.style.visibility = 'visible';
-              wrapper.style.width = '210mm';
-            }
-            clonedElement.style.position = 'static';
-            clonedElement.style.left = '0';
-            clonedElement.style.top = '0';
-            clonedElement.style.visibility = 'visible';
-          }
-          clonedDoc.documentElement.style.height = `${captureHeight}px`;
-          clonedDoc.body.style.height = `${captureHeight}px`;
-          clonedDoc.body.style.overflow = 'visible';
-        }
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       pdf.save(`Sozlesme_${formData.damat_ad_soyad || 'Kayit'}.pdf`);
-      
     } catch (error) {
       console.error('PDF Error:', error);
       alert('PDF oluşturulamadı.');
     } finally {
+      if (clone && clone.parentNode) clone.parentNode.removeChild(clone);
       setLoading(false);
     }
   };
@@ -310,40 +180,32 @@ const YeniKayit = () => {
       const orgDate = isKinaOnly ? formData.kina_tarih : formData.org_tarih;
       const orgTime = isKinaOnly ? formData.kina_saat : formData.org_saat;
       const orgPlace = isKinaOnly ? formData.kina_yer : formData.org_yer;
-      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : (formData.org_icerik || 'Organizasyon')));
-      const [y, m, d] = (orgDate || '').split('-').map((n) => parseInt(n, 10));
-      const [hh, mm] = (orgTime || '00:00').split(':').map((n) => parseInt(n, 10));
-      const tarihSaatIso = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0).toISOString();
-
-      const ekNotlarObj = {
-        sozlesme_turu: formData.sozlesme_turu,
-        gelin_ad_soyad: formData.gelin_ad_soyad,
-        gelin_tel: formData.gelin_tel,
-        yakin_ad_soyad: formData.yakin_ad_soyad,
-        yakin_tel: formData.yakin_tel,
-        kina_tarih: formData.kina_tarih,
-        kina_yer: formData.kina_yer,
-        kina_saat: formData.kina_saat,
-        paket_icerigi: formData.paket_icerigi,
-        kina_paketi: formData.kina_paketi,
-        randevu_icerigi: formData.randevu_icerigi,
-        ikramliklar: formData.ikramliklar,
-        personel_ad: formData.personel_ad,
-        personel_ucret: formData.personel_ucret,
-        ek_istekler: formData.ek_notlar,
-        kina_ek_istekler: formData.kina_ek_istekler,
-        _tz_fixed: true,
-        _is_complex: true
-      };
+      const orgType = isKinaOnly ? 'Kına' : (formData.sozlesme_turu === 'dugun' ? 'Düğün' : (formData.org_icerik || 'Organizasyon'));
 
       const { data: orgData, error: orgError } = await supabase
         .from('organizasyonlar')
         .insert([{
           musteri_id: customerData.id,
           tur: orgType,
-          tarih_saat: tarihSaatIso,
+          tarih_saat: `${orgDate}T${orgTime || '00:00'}`,
           mekan_adi: orgPlace,
-          ek_notlar: JSON.stringify(ekNotlarObj)
+          ek_notlar: JSON.stringify({
+              sozlesme_turu: formData.sozlesme_turu,
+              gelin_ad_soyad: formData.gelin_ad_soyad,
+              gelin_tel: formData.gelin_tel,
+              yakin_ad_soyad: formData.yakin_ad_soyad,
+              yakin_tel: formData.yakin_tel,
+              kina_tarih: formData.kina_tarih,
+              kina_yer: formData.kina_yer,
+              kina_saat: formData.kina_saat,
+              paket_icerigi: formData.paket_icerigi,
+              kina_paketi: formData.kina_paketi,
+              randevu_icerigi: formData.randevu_icerigi,
+              ikramliklar: formData.ikramliklar,
+              ek_istekler: formData.ek_notlar, 
+              kina_ek_istekler: formData.kina_ek_istekler,
+              _is_complex: true
+            })
         }])
         .select()
         .single();
@@ -351,22 +213,8 @@ const YeniKayit = () => {
       if (orgError) throw orgError;
 
       // 3. Create finance record
-      const isStandart = formData.sozlesme_turu === 'standart';
-      
-      let total = 0;
-      let kaparo = 0;
-      
-      if (isStandart) {
-        total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
-        kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
-      } else if (isKinaOnly) {
-        total = parseFloat(formData.kina_toplam_ucret) || 0;
-        kaparo = parseFloat(formData.kina_kapora) || 0;
-      } else {
-        total = parseFloat(formData.toplam_ucret) || 0;
-        kaparo = parseFloat(formData.kapora) || 0;
-      }
-
+      const total = (parseFloat(formData.toplam_ucret) || 0) + (parseFloat(formData.kina_toplam_ucret) || 0);
+      const kaparo = (parseFloat(formData.kapora) || 0) + (parseFloat(formData.kina_kapora) || 0);
       const odeme_durumu = kaparo >= total ? 'Ödendi' : (kaparo > 0 ? 'Kısmi' : 'Ödenmedi');
 
       const { error: financeError } = await supabase
@@ -379,65 +227,6 @@ const YeniKayit = () => {
         }]);
 
       if (financeError) throw financeError;
-
-      const personelAdi = (formData.personel_ad || '').trim();
-      const personelUcret = parseFloat(String(formData.personel_ucret || '').replace(',', '.'));
-      if (orgDate && Number.isFinite(personelUcret) && personelUcret > 0) {
-        const { error: expError } = await supabase
-          .from('harcamalar')
-          .insert([{
-            ad: personelAdi ? `Personel - ${personelAdi}` : 'Personel',
-            tutar: personelUcret,
-            tarih: orgDate
-          }]);
-        if (expError) {
-          if (expError.code === '42P01') {
-            alert('Personel ödemesi Defter\'e eklenemedi: Harcamalar tablosu bulunamadı (public.harcamalar).');
-          } else if (expError.code === '42501' || expError.code === 'PGRST301') {
-            alert('Personel ödemesi Defter\'e eklenemedi: Harcama ekleme yetkisi yok. Supabase RLS/policy kontrol edin.');
-          } else {
-            alert(`${expError.message || 'Personel ödemesi Defter\'e eklenemedi.'}${expError.code ? ` (code: ${expError.code})` : ''}`);
-          }
-        }
-      }
-
-      const uploadSignature = async (key, dataUrl) => {
-        if (!dataUrl) return null;
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png';
-        const path = `${orgData.id}/${key}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from('imzalar')
-          .upload(path, blob, { upsert: true, contentType: blob.type });
-        if (upErr) throw upErr;
-        const { data } = supabase.storage.from('imzalar').getPublicUrl(path);
-        return data?.publicUrl || null;
-      };
-
-      let yetkiliUrl = null;
-      let musteriUrl = null;
-      try {
-        yetkiliUrl = await uploadSignature('yetkili', yetkiliImzaDataUrl);
-        musteriUrl = await uploadSignature('musteri', musteriImzaDataUrl);
-      } catch (sigErr) {
-        alert(sigErr?.message ? `İmza kaydedilemedi: ${sigErr.message}` : 'İmza kaydedilemedi.');
-      }
-
-      if (yetkiliUrl || musteriUrl) {
-        const updatedNotes = {
-          ...ekNotlarObj,
-          imza_yetkili_url: yetkiliUrl || undefined,
-          imza_musteri_url: musteriUrl || undefined
-        };
-        const { error: notesErr } = await supabase
-          .from('organizasyonlar')
-          .update({ ek_notlar: JSON.stringify(updatedNotes) })
-          .eq('id', orgData.id);
-        if (notesErr) {
-          alert(notesErr?.message ? `İmza bilgisi kayda işlenemedi: ${notesErr.message}` : 'İmza bilgisi kayda işlenemedi.');
-        }
-      }
 
       alert('Kayıt başarıyla oluşturuldu!');
       navigate('/');
@@ -502,34 +291,34 @@ const YeniKayit = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex flex-col gap-2 w-full md:w-auto">
           <h2 className="text-xl font-bold text-gray-800">Yeni Organizasyon Kaydı</h2>
-          <div className="flex bg-gray-100 p-1.5 rounded-xl overflow-x-auto no-scrollbar w-full md:w-fit whitespace-nowrap gap-1">
+          <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto no-scrollbar w-full md:w-fit whitespace-nowrap">
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'standart' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'standart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               STANDART (DÜĞÜN/KINA)
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'dugun' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'dugun' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               DÜĞÜN SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'kina' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'kina' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               KINA SÖZLEŞMESİ
             </button>
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, sozlesme_turu: 'randevu' }))}
-              className={`px-4 py-2 text-[11px] md:text-xs font-bold rounded-lg transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all flex-shrink-0 ${formData.sozlesme_turu === 'randevu' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              TAÇ EVENT
+              RANDEVU İÇERİĞİ
             </button>
           </div>
         </div>
@@ -671,29 +460,6 @@ const YeniKayit = () => {
                   </label>
                 ))}
               </div>
-              <div className="mt-5">
-                <div className="font-bold text-[11px] text-gray-500 uppercase tracking-wider mb-2">PERSONEL</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    name="personel_ad"
-                    value={formData.personel_ad}
-                    onChange={handleChange}
-                    placeholder="Personel Adı"
-                    className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <input
-                    name="personel_ucret"
-                    type="number"
-                    value={formData.personel_ucret}
-                    onChange={handleChange}
-                    placeholder="Ödenen Ücret (₺)"
-                    className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="mt-2 text-[10px] font-semibold text-gray-400">
-                  Buraya girilen ücret, seçilen tarihe Defter’de harcama olarak eklenir.
-                </div>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -763,7 +529,7 @@ const YeniKayit = () => {
             {/* Tekil Sözleşme UI (Düğün, Kına veya Randevu) */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
               <div className="font-bold text-indigo-600 text-center border-b pb-2 text-xl tracking-widest uppercase">
-                {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 
+                {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
                  formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 'KINA PAKET İÇERİĞİ'}
               </div>
               
@@ -771,7 +537,7 @@ const YeniKayit = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-3">
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT TARİHİ' : 'ETKİNLİK TARİHİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ' : 'ETKİNLİK TARİHİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_tarih' : 'org_tarih'} 
@@ -781,7 +547,7 @@ const YeniKayit = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                     />
                     <label className="text-xs font-bold text-gray-400 uppercase">
-                      {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT SAATİ' : 'ETKİNLİK SAATİ'}
+                      {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ' : 'ETKİNLİK SAATİ'}
                     </label>
                     <input 
                       name={formData.sozlesme_turu === 'kina' ? 'kina_saat' : 'org_saat'} 
@@ -858,29 +624,6 @@ const YeniKayit = () => {
                     </label>
                   ))}
                 </div>
-                <div className="mt-5">
-                  <div className="font-bold text-[11px] text-gray-500 uppercase tracking-wider mb-2">PERSONEL</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      name="personel_ad"
-                      value={formData.personel_ad}
-                      onChange={handleChange}
-                      placeholder="Personel Adı"
-                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <input
-                      name="personel_ucret"
-                      type="number"
-                      value={formData.personel_ucret}
-                      onChange={handleChange}
-                      placeholder="Ödenen Ücret (₺)"
-                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="mt-2 text-[10px] font-semibold text-gray-400">
-                    Buraya girilen ücret, seçilen tarihe Defter’de harcama olarak eklenir.
-                  </div>
-                </div>
               </div>
 
               <div className="border-t pt-6">
@@ -926,272 +669,265 @@ const YeniKayit = () => {
             </div>
           </>
         )}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="font-bold text-sm text-gray-600 mb-4 uppercase tracking-wider">İmzalar</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
-                {formData.sozlesme_turu === 'randevu' ? 'Randevuyu Alan Yetkili' : 'Sözleşmeyi Alan Yetkili'}
-              </div>
-              <div className="w-full h-32 rounded-xl border border-gray-300 overflow-hidden bg-white">
-                <canvas
-                  ref={yetkiliImzaCanvasRef}
-                  className="w-full h-full touch-none"
-                  onPointerDown={(e) => startImza('yetkili', e)}
-                  onPointerMove={(e) => moveImza('yetkili', e)}
-                  onPointerUp={(e) => endImza('yetkili', e)}
-                  onPointerCancel={(e) => endImza('yetkili', e)}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => temizleImza('yetkili')}
-                className="mt-2 text-xs font-bold text-gray-600 hover:text-gray-900"
-              >
-                Temizle
-              </button>
-            </div>
-            <div>
-              <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
-                {formData.sozlesme_turu === 'randevu' ? 'Düğün Sahibi Yetkili' : 'Müşteri Yetkili'}
-              </div>
-              <div className="w-full h-32 rounded-xl border border-gray-300 overflow-hidden bg-white">
-                <canvas
-                  ref={musteriImzaCanvasRef}
-                  className="w-full h-full touch-none"
-                  onPointerDown={(e) => startImza('musteri', e)}
-                  onPointerMove={(e) => moveImza('musteri', e)}
-                  onPointerUp={(e) => endImza('musteri', e)}
-                  onPointerCancel={(e) => endImza('musteri', e)}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => temizleImza('musteri')}
-                className="mt-2 text-xs font-bold text-gray-600 hover:text-gray-900"
-              >
-                Temizle
-              </button>
-            </div>
-          </div>
-        </div>
       </form>
 
       {/* Görünmez PDF Alanı */}
-      <div style={{ position: 'fixed', left: '-20000px', top: 0, width: '210mm', zIndex: -9999 }}>
-        <div ref={pdfRef} id="pdf-content" style={{ width: '210mm', padding: '15mm', background: 'white', color: 'black', boxSizing: 'border-box', fontFamily: "'Times New Roman', serif" }}>
-          {/* HEADER */}
-          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '5px double black', paddingBottom: '10px' }}>
-            <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0', letterSpacing: '8px', textTransform: 'uppercase', color: 'black' }}>
-              {formData.sozlesme_turu === 'randevu' ? 'TAÇ EVENT' : 'TAÇ ORGANİZASYON'}
-            </h1>
-            {formData.sozlesme_turu !== 'randevu' && (
-              <p style={{ fontSize: '20px', margin: '5px 0 0', fontStyle: 'italic', fontWeight: 'bold', color: 'black' }}>
-                Profesyonel Organizasyon Hizmetleri
-              </p>
-            )}
-          </div>
+      <div style={{ visibility: 'hidden', position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={pdfRef} className="p-12 bg-white text-black font-serif" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', background: 'white' }}>
+          {formData.sozlesme_turu === 'standart' ? (
+            <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
+              {/* Logo ve Başlık */}
+              <div className="text-center mb-10">
+                <div className="text-4xl font-black tracking-[0.2em] mb-1">TAC</div>
+                <div className="text-xl italic font-serif">Organizasyon</div>
+              </div>
 
-          {/* CUSTOMER INFO TABLE - REAL HTML TABLE FOR STABILITY */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <tbody>
-              {[
-                { label: 'DAMADIN ADI SOYADI:', val: formData.damat_ad_soyad, tel: formData.damat_tel },
-                { label: 'GELİNİN ADI SOYADI:', val: formData.gelin_ad_soyad, tel: formData.gelin_tel },
-                { label: 'YAKINININ ADI SOYADI:', val: formData.yakin_ad_soyad, tel: formData.yakin_tel }
-              ].map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid black' }}>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '180px', verticalAlign: 'middle' }}>{row.label}</td>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>{row.val || '.....................................'}</td>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '40px', textAlign: 'right', verticalAlign: 'middle' }}>TEL:</td>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', textAlign: 'right', verticalAlign: 'middle' }}>{row.tel || '.....................'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              {/* Üst Bilgiler */}
+              <div className="space-y-3 mb-8 text-[13px]">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.damat_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.gelin_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.yakin_tel || '...........................................'}</span>
+                </div>
+              </div>
 
-          {/* DATE & TIME TABLE */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
-            <tbody>
-              <tr>
-                <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>
-                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ:' : 'TARİH:'}
+              <div className="grid grid-cols-2 gap-12 text-[12px] mb-8">
+                <div className="space-y-2">
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON İÇERİĞİ :</span><span className="font-semibold">{formData.org_icerik || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON TARİHİ :</span><span className="font-semibold">{formatDate(formData.org_tarih)}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON YERİ :</span><span className="font-semibold">{formData.org_yer || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-48 font-bold">ORGANİZASYON SAATİ :</span><span className="font-semibold">{formatTime(formData.org_saat)}</span></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA TARİHİ :</span><span className="font-semibold">{formatDate(formData.kina_tarih)}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA YERİ :</span><span className="font-semibold">{formData.kina_yer || '........................'}</span></div>
+                  <div className="flex border-b border-black pb-1"><span className="w-40 font-bold">KINA SAATİ :</span><span className="font-semibold">{formatTime(formData.kina_saat)}</span></div>
+                </div>
+              </div>
+
+              {/* Dikey Çizgi Ayırıcı */}
+              <div className="grid grid-cols-2 gap-12 relative">
+                <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-black -translate-x-1/2"></div>
+                
+                {/* Paket İçeriği Sol */}
+                <div className="pr-6">
+                  <div className="text-center font-bold text-xl mb-6 tracking-widest">PAKET İÇERİĞİ</div>
+                  <div className="space-y-1.5">
+                    {formData.paket_icerigi.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-[11px]">
+                        <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
+                          {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                        </div>
+                        <span className="flex-1 font-bold uppercase">{item.ad}</span>
+                        {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                      {formData.ek_notlar}
+                    </div>
+                  </div>
+                  <div className="mt-8 space-y-2 text-[12px]">
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.toplam_ucret || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kapora || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kalan || '................'} ₺</span></div>
+                  </div>
+                </div>
+
+                {/* Kına Paketi Sağ */}
+                <div className="pl-6">
+                  <div className="text-center font-bold text-xl mb-6 tracking-widest">KINA PAKETİ</div>
+                  <div className="space-y-1.5">
+                    {formData.kina_paketi.map((item, idx) => (
+                      <div key={idx} className="flex flex-col">
+                        <div className="flex items-center gap-3 text-[11px]">
+                          <div className={`w-4 h-4 border-2 border-black flex items-center justify-center rounded-sm ${item.secili ? 'bg-black' : ''}`}>
+                            {item.secili && <Check size={10} className="text-white stroke-[3px]" />}
+                          </div>
+                          <span className="flex-1 font-bold uppercase">{item.ad}</span>
+                          {item.sayi !== undefined && <span className="text-[10px] font-semibold">( sayısı: {item.sayi || '..........'} )</span>}
+                        </div>
+                        {item.detay && (
+                          <div className="ml-7 text-[9px] font-medium leading-tight mt-0.5">
+                            {item.detay.split(', ').map((d, i) => (
+                              <span key={i} className="mr-2">. {d}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <div className="font-bold text-[11px] mb-1 uppercase">EXTRA İSTEKLER;</div>
+                    <div className="min-h-[60px] border-b-2 border-black border-dotted font-semibold text-[11px] py-1 whitespace-pre-wrap">
+                      {formData.kina_ek_istekler}
+                    </div>
+                  </div>
+                  <div className="mt-8 space-y-2 text-[12px]">
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">TOPLAM ÜCRET:</span><span className="font-bold text-right flex-1">{formData.kina_toplam_ucret || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KAPORA:</span><span className="font-bold text-right flex-1">{formData.kina_kapora || '................'} ₺</span></div>
+                    <div className="flex border-b border-black pb-1"><span className="w-32 font-bold">KALAN:</span><span className="font-bold text-right flex-1">{formData.kina_kalan || '................'} ₺</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* İkramlıklar (Standart) */}
+              <div className="mt-6 border-t border-black pt-4">
+                <div className="font-bold text-[11px] mb-2 uppercase">İKRAMLIKLAR;</div>
+                <div className="flex gap-8 ml-2">
+                  {formData.ikramliklar.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-[11px]">
+                      <span className="font-bold">{item.ad}</span>
+                      <div className="w-4 h-4 border border-black flex items-center justify-center">
+                        {item.secili && <Check size={12} className="stroke-[3px]" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-10 text-center text-[12px] font-black bg-gray-200 py-2 border-2 border-black">
+                ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR
+              </div>
+
+              <div className="mt-12 grid grid-cols-2 gap-24 text-[11px]">
+                <div className="space-y-6">
+                  <div className="font-bold text-sm">RANDEVUYU ALAN YETKİLİ</div>
+                  <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-sm">İMZA</div>
+                </div>
+                <div className="space-y-6">
+                  <div className="font-bold text-sm">DÜĞÜN SAHİBİ YETKİLİ</div>
+                  <div className="border-b border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-sm">İMZA</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="pdf-container" style={{ background: 'white', color: 'black' }}>
+              {/* Tekil Sözleşme Şablonu (Randevu, Düğün veya Kına) */}
+              <div className="space-y-3 mb-6 text-[13px]">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">DAMADIN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.damat_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.damat_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">GELİNİN ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.gelin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.gelin_tel || '...........................................'}</span>
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-56 font-bold">YAKINININ ADI SOYADI :</span>
+                  <span className="flex-1 uppercase font-semibold">{formData.yakin_ad_soyad || '..................................................................'}</span>
+                  <span className="w-10 font-bold">TEL</span>
+                  <span className="w-48 font-semibold text-right">{formData.yakin_tel || '...........................................'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-12 text-[12px] mb-6">
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-48 font-bold uppercase">
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU TARİHİ :' : 'ETKİNLİK TARİHİ :'}
                   </span>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
+                  <span className="font-semibold">
                     {formatDate(formData.sozlesme_turu === 'kina' ? formData.kina_tarih : formData.org_tarih)}
                   </span>
-                </td>
-                <td style={{ width: '4%' }}></td>
-                <td style={{ width: '48%', borderBottom: '1px solid black', padding: '12px 0 5px 0', verticalAlign: 'middle' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px', marginRight: '10px' }}>
-                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ:' : 'SAAT:'}
+                </div>
+                <div className="flex border-b border-black pb-1">
+                  <span className="w-48 font-bold uppercase">
+                    {formData.sozlesme_turu === 'randevu' ? 'RANDEVU SAATİ :' : 'ETKİNLİK SAATİ :'}
                   </span>
-                  <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
+                  <span className="font-semibold">
                     {formatTime(formData.sozlesme_turu === 'kina' ? formData.kina_saat : formData.org_saat)}
                   </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {formData.sozlesme_turu !== 'randevu' && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid black' }}>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', width: '140px', verticalAlign: 'middle' }}>ETKİNLİK YERİ:</td>
-                  <td style={{ padding: '12px 0 5px 0', fontWeight: 'bold', fontSize: '15px', verticalAlign: 'middle' }}>
-                    {(formData.sozlesme_turu === 'kina' ? formData.kina_yer : formData.org_yer) || '..........................................................................................'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-
-          {/* TITLE */}
-          <div style={{ textAlign: 'center', fontSize: '28px', fontWeight: 'bold', margin: '25px 0', borderTop: '2px solid black', borderBottom: '2px solid black', padding: '12px 0', background: '#f5f5f5', textTransform: 'uppercase', color: 'black' }}>
-            {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' :
-             formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' :
-             formData.sozlesme_turu === 'kina' ? 'KINA PAKET İÇERİĞİ' : 'ORGANİZASYON İÇERİĞİ'}
-          </div>
-
-          {/* ITEMS LIST - USING FLOAT FOR BETTER PDF RENDERING */}
-          <div style={{ overflow: 'hidden', margin: '15px 0', clear: 'both' }}>
-            {(formData.sozlesme_turu === 'randevu' ? formData.randevu_icerigi : 
-              formData.sozlesme_turu === 'dugun' ? formData.paket_icerigi : 
-              formData.sozlesme_turu === 'kina' ? formData.kina_paketi : 
-              [...formData.paket_icerigi, ...formData.kina_paketi]).map((item, idx) => (
-              <div key={idx} style={{ width: '48%', float: 'left', height: '35px', marginBottom: '5px', clear: idx % 2 === 0 ? 'left' : 'none' }}>
-                <div style={{ width: '22px', height: '22px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '20px', marginRight: '10px', fontWeight: 'bold', fontSize: '18px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? 'X' : ''}
                 </div>
-                <span style={{ fontSize: '15px', fontWeight: 'bold', verticalAlign: 'middle', display: 'inline-block' }}>{item.ad}</span>
-                {item.sayi && <span style={{ marginLeft: '5px', fontSize: '13px', verticalAlign: 'middle' }}>({item.sayi})</span>}
               </div>
-            ))}
-            <div style={{ clear: 'both' }}></div>
-          </div>
 
-          {/* REFRESHMENTS */}
-          <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', margin: '15px 0', borderTop: '1px solid black', borderBottom: '1px solid black', padding: '8px 0', background: '#f5f5f5', color: 'black' }}>İKRAMLIKLAR</div>
-          <div style={{ overflow: 'hidden', marginBottom: '15px', clear: 'both' }}>
-            {formData.ikramliklar.map((item, idx) => (
-              <div key={idx} style={{ width: '25%', float: 'left', height: '35px' }}>
-                <div style={{ width: '20px', height: '20px', border: '2px solid black', display: 'inline-block', textAlign: 'center', lineHeight: '18px', marginRight: '8px', fontWeight: 'bold', fontSize: '16px', fontFamily: 'Arial', verticalAlign: 'middle' }}>
-                  {item.secili ? 'X' : ''}
-                </div>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', verticalAlign: 'middle' }}>{item.ad}</span>
+              <div className="text-center font-bold text-4xl mb-8 tracking-[0.3em] uppercase">
+                {formData.sozlesme_turu === 'randevu' ? 'RANDEVU İÇERİĞİ' : 
+                 formData.sozlesme_turu === 'dugun' ? 'DÜĞÜN PAKET İÇERİĞİ' : 'KINA PAKET İÇERİĞİ'}
               </div>
-            ))}
-            <div style={{ clear: 'both' }}></div>
-          </div>
 
-          {/* EXTRA REQUESTS */}
-          <div style={{ marginTop: '15px', clear: 'both' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px', color: 'black' }}>
-              {formData.sozlesme_turu === 'randevu' ? 'EXTRA İSTEKLER :' : 'EKSTRA İSTEKLER:'}
-            </div>
-            <div style={{ border: '2px solid black', padding: '12px', minHeight: '120px', fontSize: '15px', fontWeight: 'bold', lineHeight: '1.6', color: 'black' }}>
-              {(formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_notlar) || '........................................................................................................................'}
-            </div>
-          </div>
-
-          {/* FOOTER RULES */}
-          <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 'bold', margin: '30px 0', padding: '15px', border: '2px solid black', background: '#f0f0f0', lineHeight: '1.6', color: 'black' }}>
-            {formData.sozlesme_turu === 'randevu' ? (
-              <>
-                SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. RANDEVU İÇERİĞİ KURALLARI KESİN VE NETTİR.<br/>
-                MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EXTRA MEKAN VE HİZMET ÜCRETİ TALEP EDİLECEKTİR.<br/>
-                ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
-              </>
-            ) : (
-              <>
-                SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN. KURALLAR KESİN VE NETTİR.<br/>
-                MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI DURUMUNDA EK ÜCRET ALINIR.<br/>
-                ÖDEMELER TAÇ EVENT GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR.
-              </>
-            )}
-          </div>
-
-          {/* FINANCE TABLE */}
-          <div style={{ width: '50%', float: 'right', marginTop: '20px', clear: 'both' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {[
-                  { label: 'TOPLAM ÜCRET :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0') },
-                  { label: 'KAPORA :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0') },
-                  { label: 'KALAN :', val: (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || (formData.sozlesme_turu === 'randevu' ? '........................................' : '0'), isLast: true }
-                ].map((row, i) => (
-                  <tr key={i} style={{ borderBottom: row.isLast ? '4px solid black' : '2px solid black' }}>
-                    <td style={{ padding: '10px 0', fontWeight: 'bold', fontSize: '17px', color: 'black' }}>{row.label}</td>
-                    <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 'bold', fontSize: row.isLast ? '24px' : '17px', color: 'black' }}>
-                      {formData.sozlesme_turu === 'randevu' ? row.val : `${row.val} ₺`}
-                    </td>
-                  </tr>
+              <div className="space-y-3 mb-10 ml-4">
+                {(formData.sozlesme_turu === 'randevu' ? formData.randevu_icerigi : 
+                  formData.sozlesme_turu === 'dugun' ? formData.paket_icerigi : formData.kina_paketi).map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-4 text-[16px]">
+                    <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
+                      {item.secili && <Check size={20} className="stroke-[4px]" />}
+                    </div>
+                    <span className="font-bold uppercase tracking-wide">{item.ad}</span>
+                    {item.sayi !== undefined && <span className="text-[12px] font-semibold italic">( {item.sayi || '....'} adet )</span>}
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ clear: 'both' }}></div>
+              </div>
 
-          {/* SIGNATURE AREA */}
-          <table style={{ width: '100%', marginTop: '60px', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  {formData.sozlesme_turu === 'randevu' ? (
-                    <>
-                      RANDEVUYU ALAN YETKİLİ<br/><br/>
-                      İSİM SOYİSİM : ........................................<br/><br/>
-                      İMZA : {yetkiliImzaDataUrl ? '' : '........................................'}
-                      {yetkiliImzaDataUrl && (
-                        <div style={{ marginTop: '10px' }}>
-                          <img src={yetkiliImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      SÖZLEŞMEYİ ALAN YETKİLİ<br/><br/>
-                      İSİM SOYİSİM:<br/><br/>
-                      İMZA{yetkiliImzaDataUrl ? '' : ''}
-                      {yetkiliImzaDataUrl && (
-                        <div style={{ marginTop: '10px' }}>
-                          <img src={yetkiliImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </td>
-                <td style={{ width: '10%' }}></td>
-                <td style={{ width: '45%', borderTop: '2px solid black', paddingTop: '15px', fontWeight: 'bold', fontSize: '15px', color: 'black', verticalAlign: 'top' }}>
-                  {formData.sozlesme_turu === 'randevu' ? (
-                    <>
-                      DÜĞÜN SAHİBİ YETKİLİ<br/><br/>
-                      İSİM SOYİSİM : ........................................<br/><br/>
-                      İMZA : {musteriImzaDataUrl ? '' : '........................................'}
-                      {musteriImzaDataUrl && (
-                        <div style={{ marginTop: '10px' }}>
-                          <img src={musteriImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      MÜŞTERİ YETKİLİ<br/><br/>
-                      İSİM SOYİSİM:<br/><br/>
-                      İMZA{musteriImzaDataUrl ? '' : ''}
-                      {musteriImzaDataUrl && (
-                        <div style={{ marginTop: '10px' }}>
-                          <img src={musteriImzaDataUrl} alt="" style={{ width: '100%', height: '85px', objectFit: 'contain', display: 'block' }} />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              <div className="mb-8">
+                <div className="font-bold text-[14px] mb-4 uppercase">İKRAMLIKLAR;</div>
+                <div className="flex gap-12 ml-4">
+                  {formData.ikramliklar.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-[14px]">
+                      <span className="font-bold">{item.ad}</span>
+                      <div className="w-6 h-6 border-2 border-black flex items-center justify-center">
+                        {item.secili && <Check size={18} className="stroke-[4px]" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-10">
+                <div className="font-bold text-[14px] mb-2 uppercase">EXTRA İSTEKLER :</div>
+                <div className="min-h-[100px] border-b-2 border-black border-dotted font-semibold text-[14px] py-1 whitespace-pre-wrap leading-relaxed">
+                  {formData.sozlesme_turu === 'kina' ? formData.kina_ek_istekler : formData.ek_notlar}
+                </div>
+              </div>
+
+              <div className="text-center space-y-2 mb-10">
+                <p className="text-[12px] font-bold">SÖZLEŞMEYE DAHİL OLAN İÇERİKLERİ DİKKATLİCE OKUYUN.</p>
+                <p className="text-[12px] font-bold">PAKET İÇERİĞİ KURALLARI KESİN VE NETTİR.</p>
+                <p className="text-[12px] font-bold">MEKAN KAPASİTESİ 100 KİŞİLİK OLUP KAPASİTENİN DIŞINA ÇIKILMASI</p>
+                <p className="text-[12px] font-bold">DURUMUNDA EXTRA MEKAN VE HİZMET ÜCRETİ TALEP EDİLECEKTİR</p>
+                <p className="text-[12px] font-bold">ÖDEMELER RANDEVU GÜNÜNDEN 1 HAFTA ÖNCE ALINMAKTADIR</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 text-[16px] w-1/2 mb-12">
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">TOPLAM ÜCRET :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_toplam_ucret : formData.toplam_ucret) || '................'} ₺</span></div>
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">KAPORA :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_kapora : formData.kapora) || '................'} ₺</span></div>
+                <div className="flex border-b-2 border-black pb-1"><span className="w-48 font-bold">KALAN :</span><span className="font-black text-right flex-1">{ (formData.sozlesme_turu === 'kina' ? formData.kina_kalan : formData.kalan) || '................'} ₺</span></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-24 text-[13px]">
+                <div className="space-y-8">
+                  <div className="font-bold text-base uppercase">SÖZLEŞMEYİ ALAN YETKİLİ</div>
+                  <div className="border-b-2 border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-base">İMZA</div>
+                </div>
+                <div className="space-y-8">
+                  <div className="font-bold text-base uppercase">MÜŞTERİ YETKİLİ</div>
+                  <div className="border-b-2 border-black pb-1 font-bold">İSİM SOYİSİM :</div>
+                  <div className="font-bold text-base">İMZA</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
